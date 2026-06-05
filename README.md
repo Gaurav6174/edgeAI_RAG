@@ -1,59 +1,74 @@
-# Intelligent Exam Copy Evaluator
-On-Device RAG System for Automated Answer Sheet Assessment
+# Campus Handbook Bot
 
-**Team:** Titans — Gaurav Chaurasia, Bittu Prajapati
+Edge-Optimised On-Device RAG System for Institutional Document Q&A
+
+**Team:** Titans  
+**Authors:** Gaurav Chaurasia, Bittu Prajapati
 
 ## Overview
-An on-device RAG (Retrieval-Augmented Generation) system that automates evaluation of student answer copies. Teachers upload an answer key PDF which is indexed into a local vector store. Scanned student answer sheets are processed with OCR, retrieved against the index, and evaluated by a local LLM to produce cited, question-wise scores and mistake summaries — all without cloud dependency.
+
+Campus Handbook Bot is a fully on-device retrieval-augmented generation (RAG) system that lets students and staff ask plain-English questions about institutional documents such as handbooks, fee structures, exam schedules, hostel rules, and policy documents.
+
+Users upload a PDF, ask a question, and receive a direct answer with the exact source cited. The entire pipeline runs locally on NVIDIA Jetson Orin Nano using Llama 3.2 1B, with no internet dependency and no data leaving the device.
 
 ## Use Cases
-- Schools and coaching institutes evaluating large volumes of descriptive answer copies
-- Air-gapped or offline environments where cloud tools are not permitted
-- Privacy-sensitive institutions (hospitals, defence, legal) where documents cannot leave premises
-- Standardised theory exams in subjects with a predefined answer key
+
+- Students getting instant answers from long handbooks without reading hundreds of pages.
+- Administrative staff quickly looking up policies during student interactions.
+- Institutions with privacy requirements where documents cannot be sent to external cloud services.
+- Low-connectivity campuses needing a reliable offline knowledge assistant.
 
 ## Key Features
-- Cited evaluation: scores are grounded in specific answer-key chunks to avoid hallucinations
-- Question-wise scoring: segments student answers and evaluates each question independently
-- Mistake identification: pinpoints missing concepts with references to the correct answer
-- Aggregate report: per-student summary with total score, weak topics, and feedback
-- Pluggable answer keys: drop a new answer-key PDF to re-index instantly
 
-## Scope
-Supports printed and semi-handwritten scanned PDFs in English for single-subject, theory-style exams. Diagram-heavy or equation-only answers are out of scope for v1.
+- Smart search: finds the right answer whether the question is broad or tied to a specific rule number.
+- Honest answers: if the answer is not in the document, the system says so instead of inventing one.
+- Best results first: ranks retrieved content before generation so the model only sees relevant context.
+- Fast replies: streams the answer word by word instead of waiting for the full generation to finish.
+- Always ready: indexed documents persist across reboots, so re-uploading is not required.
+- Cited answers: every response shows exactly which document and section it came from.
 
-## System Architecture
-The pipeline has two phases:
+## Architecture
 
-- **Phase 1 — Indexing (Answer Key)**
-  - Answer key PDF → PDF parser (PyMuPDF)
-  - Text chunking → embedding model (nomic-embed-text)
-  - Persist embeddings in a vector store (ChromaDB or FAISS)
+```mermaid
+flowchart LR
+    A[PDF upload] --> B[Text extraction]
+    B --> C[Chunking]
+    C --> D[Dual index\nSemantic: FAISS\nKeyword: BM25]
+    D --> E[Hybrid retrieval\nTop-10]
+    E --> F[Rerank\nTop-3]
+    F --> G[Confidence check]
+    G --> H[Llama 3.2 1B via Ollama\nStreaming]
+    H --> I[Cited answer]
+    I --> J[React frontend]
+```
 
-- **Phase 2 — Evaluation (Student Copy)**n+  - Scanned student PDF → OCR (PaddleOCR or TrOCR)
-  - Segment answers by question number
-  - Query vector store for top-k relevant answer-key chunks
-  - Local LLM (e.g., Mistral 7B or Phi-3 Mini via Ollama) evaluates answers using retrieved context
-  - Output: per-question score, missed points, and citations
+The pipeline combines semantic and keyword search, reranks the best matches, checks confidence, and then generates a cited response through a local LLM.
 
 ## Tech Stack
-- OCR: PaddleOCR or TrOCR
-- PDF parsing: PyMuPDF
-- Embeddings: nomic-embed-text
-- Vector store: ChromaDB or FAISS (on-disk persistence)
-- LLM: Mistral 7B Q4 / Phi-3 Mini via Ollama (local)
-- RAG orchestration: LlamaIndex
-- Backend: FastAPI (REST interface for evaluation requests)
 
-## Quickstart (high level)
-1. Install dependencies listed by the project (Python 3.10+ recommended).
-2. Index an answer-key PDF:
-   - Parse PDF with PyMuPDF, chunk the text, compute embeddings, and store them in the chosen vector DB.
-3. Evaluate a scanned student copy:
-   - Run OCR on the scanned PDF, segment by question, retrieve top-k chunks from the vector store, and call the local LLM with the retrieved context to produce a structured evaluation.
+| Layer | Tool | Role |
+|---|---|---|
+| LLM | Llama 3.2 1B, Ollama, Q4_K_M quantization | On-device generation with streaming output |
+| Dense Search | FAISS, all-MiniLM-L6-v2 | Semantic similarity retrieval |
+| Sparse Search | BM25, rank-bm25 | Keyword and exact-match retrieval |
+| Reranking | cross-encoder/ms-marco-MiniLM-L-6-v2 | Precision rerank of top-10 to top-3 |
+| RAG Framework | LlamaIndex | Chunking, hybrid retrieval, prompt assembly |
+| PDF Parsing | PyMuPDF | Text extraction from institutional PDFs |
+| Backend | FastAPI (async) | Ingest and query REST API, background tasks |
+| Frontend | React + Vite | Upload UI, streaming chat, citation display |
+| Deployment | Docker Compose | One-command local and Jetson deployment |
 
-## How It Works (concise)
-The system uses a local vector index of an instructor-provided answer key to ground evaluations. For each student answer, it retrieves the most relevant answer-key passages and provides the LLM with only those passages as context. The LLM returns structured, cited feedback and scores to ensure evaluations are explainable and reproducible.
-i
+## Why On-Device
 
+- Privacy: documents remain on the local device.
+- Reliability: the system works without internet access.
+- Speed: local retrieval and generation reduce cloud round-trips.
+- Control: institutions keep full ownership of their data and workflow.
 
+## Project Goal
+
+The goal of this project is to provide a practical, private, and offline document question-answering assistant for campuses and institutions. It is designed for documents that are frequently referenced but time-consuming to search manually.
+
+## Deployment Concept
+
+The architecture is designed for containerised deployment with Docker Compose, making it suitable for both local development and edge deployment on Jetson hardware.
