@@ -54,13 +54,6 @@ The pipeline has two phases:
 
 ## How It Works (concise)
 The system uses a local vector index of an instructor-provided answer key to ground evaluations. For each student answer, it retrieves the most relevant answer-key passages and provides the LLM with only those passages as context. The LLM returns structured, cited feedback and scores to ensure evaluations are explainable and reproducible.
+i
 
-## Contributing
-Contributions, issues, and feature requests are welcome. Please open issues or pull requests describing proposed changes.
 
-## Authors
-- Gaurav Chaurasia
-- Bittu Prajapati
-
-## License
-Specify a license for the project (e.g., MIT) in a `LICENSE` file.
