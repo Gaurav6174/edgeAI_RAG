@@ -69,6 +69,89 @@ The pipeline combines semantic and keyword search, reranks the best matches, che
 
 The goal of this project is to provide a practical, private, and offline document question-answering assistant for campuses and institutions. It is designed for documents that are frequently referenced but time-consuming to search manually.
 
+## Project Setup Guide
+
+### 1) Prerequisites
+
+- Python 3.10 or newer
+- A local Ollama install with the target model available
+- `pip` and `venv`
+
+If you are using Ollama, pull the model once before starting the API:
+
+```bash
+ollama pull llama3.2:1b
+```
+
+### 2) Clone and enter the project
+
+```bash
+git clone https://github.com/Gaurav6174/edgeAI_RAG.git
+cd edgeAI_RAG
+```
+
+### 3) Create and activate a virtual environment
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 4) Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 5) Configure environment variables
+
+Create a `backend/.env` file with the local paths and model settings used by the app:
+
+```env
+EMBED_MODEL=sentence-transformers/all-MiniLM-L6-v2
+INDEX_DIR=../data/index
+UPLOAD_DIR=../data/uploads
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=llama3.2:1b
+TOP_K=10
+RERANK_TOP_N=3
+```
+
+### 6) Start the backend API
+
+The backend imports modules relative to the `backend/` directory, so start it from there:
+
+```bash
+cd backend
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### 7) Upload a PDF and build the index
+
+Send a PDF to the ingest endpoint to create the FAISS and BM25 indexes:
+
+```bash
+curl -F "file=@/path/to/handbook.pdf" http://localhost:8000/ingest
+```
+
+### 8) Ask a question
+
+Once ingestion is complete, query the backend:
+
+```bash
+curl -X POST http://localhost:8000/query \
+    -H "Content-Type: application/json" \
+    -d '{"question":"What is the hostel fee refund policy?"}'
+```
+
+### 9) Check citations
+
+Use the citations endpoint to inspect the supporting chunks returned for a question:
+
+```bash
+curl "http://localhost:8000/citations?question=What%20is%20the%20hostel%20fee%20refund%20policy%3F"
+```
+
 ## Deployment Concept
 
 The architecture is designed for containerised deployment with Docker Compose, making it suitable for both local development and edge deployment on Jetson hardware.
