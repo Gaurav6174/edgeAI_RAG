@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+@theme {
+  /* Colors - Dark Mode Default */
+  --color-primary: #ffffff;
+  --color-primary-active: #e7e5e4;
+  --color-ink: #ffffff;
+  --color-body: #a8a29e;
+  --color-body-strong: #ffffff;
+  --color-muted: #777169;
+  --color-muted-soft: #44403c;
+  --color-hairline: #292524;
+  --color-hairline-soft: #1c1917;
+  --color-hairline-strong: #44403c;
+  --color-canvas: #0c0a09;
+  --color-canvas-soft: #1c1917;
+  --color-canvas-deep: #000000;
+  --color-surface-card: #1c1917;
+  --color-surface-strong: #292524;
+  --color-surface-dark: #0c0a09;
+  --color-surface-dark-elevated: #292524;
+  --color-on-primary: #0c0a09;
+  --color-on-dark: #ffffff;
+  --color-on-dark-soft: #a8a29e;
+
+  /* Gradient Orbs */
+  --color-gradient-mint: #164e33;
+  --color-gradient-peach: #7c2d12;
+  --color-gradient-lavender: #4c1d95;
+  --color-gradient-sky: #0c4a6e;
+  --color-gradient-rose: #831843;
+
+  /* Semantic */
+  --color-semantic-error: #ef4444;
+  --color-semantic-success: #22c55e;
+
+  /* Spacing */
+  --spacing-section: 96px;
+
+  /* Radius */
+  --radius-xl: 16px;
+  --radius-xxl: 24px;
+
+  /* Fonts */
+  --font-serif: var(--font-eb-garamond), serif;
+  --font-sans: var(--font-inter), sans-serif;
+}
+
+@layer base {
+  *, ::after, ::before {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    @apply bg-canvas text-body font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  .display-mega {
+    @apply font-serif text-[64px] font-light leading-[1.05] tracking-[-1.92px] text-ink;
+  }
+
+  .display-xl {
+    @apply font-serif text-[48px] font-light leading-[1.08] tracking-[-0.96px] text-ink;
+  }
+
+  .display-lg {
+    @apply font-serif text-[36px] font-light leading-[1.17] tracking-[-0.36px] text-ink;
+  }
+
+  .display-sm {
+    @apply font-serif text-[24px] font-light leading-[1.2] tracking-normal text-ink;
+  }
+
+  .title-md {
+    @apply text-[20px] font-medium leading-[1.35] tracking-normal;
+  }
+
+  .body-md {
+    @apply text-[16px] font-normal leading-[1.5] tracking-[0.16px];
+  }
+
+  .caption-uppercase {
+    @apply text-[12px] font-semibold leading-[1.4] tracking-[0.96px] uppercase;
+  }
+
+  .btn-primary {
+    @apply inline-flex h-[40px] items-center justify-center rounded-full bg-primary px-5 py-2.5 text-[15px] font-medium text-on-primary transition-colors active:bg-primary-active disabled:opacity-50;
+  }
+
+  .btn-outline {
+    @apply inline-flex h-[40px] items-center justify-center rounded-full border border-hairline-strong bg-transparent px-[19px] py-[9px] text-[15px] font-medium text-ink transition-colors hover:border-ink;
+  }
+
+  .input-field {
+    @apply h-[44px] w-full rounded-md border border-hairline-strong bg-surface-card px-4 py-3 text-ink outline-none focus:border-2 focus:border-ink focus:px-[15px] focus:py-[11px];
+  }
+
+  .card {
+    @apply rounded-xl border border-hairline bg-surface-card p-6;
+  }
+
+  .orb {
+    @apply pointer-events-none absolute h-[400px] w-[400px] rounded-full opacity-25 blur-[80px] -z-1;
+  }
+}
+
+.orb-mint { background: radial-gradient(circle, var(--color-gradient-mint), transparent); }
+.orb-peach { background: radial-gradient(circle, var(--color-gradient-peach), transparent); }
+.orb-lavender { background: radial-gradient(circle, var(--color-gradient-lavender), transparent); }
+.orb-sky { background: radial-gradient(circle, var(--color-gradient-sky), transparent); }
+.orb-rose { background: radial-gradient(circle, var(--color-gradient-rose), transparent); }
