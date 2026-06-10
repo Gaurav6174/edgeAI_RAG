@@ -59,7 +59,7 @@ async def query_ollama_stream(question: str, chunks: list[dict]):
             f"{OLLAMA_HOST}/api/generate",
             json=payload
         ) as response:
-            async for line in response.iter_lines():
+            async for line in response.aiter_lines():
                 if line.strip():
                     try:
                         data = json.loads(line)

@@ -32,21 +32,18 @@ faiss_index, bm25_index, chunks = load_index()
 
 @app.post("/ingest", response_model=IngestResponse)
 async def ingest(file: UploadFile = File(...)):
-    global faiss_index, bm25_index, chunks
+    global faiss_index, bm25_index, chunks        # ← this line is critical
 
     if not file.filename.endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
-    
-    #save the uploaded file to disk
+        raise HTTPException(400, "Only PDF files are accepted")
+
     save_path = os.path.join(UPLOAD_DIR, file.filename)
     with open(save_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    # Run ingestion pipeline
     num_chunks = ingest_pdf(save_path, file.filename)
 
-    # Reload updated index into memory
-    faiss_index, bm25_index, chunks = load_index()
+    faiss_index, bm25_index, chunks = load_index()  # reload into globals
 
     return IngestResponse(
         message="Ingestion complete",
@@ -60,7 +57,7 @@ async def query(request: QueryRequest):
     Accepts a question, retrieves relevant chunks,
     checks confidence, then streams the LLM answer.
     """
-
+    global faiss_index, bm25_index, chunks 
     if faiss_index is None:
         raise HTTPException(400, "No documents indexed yet. Please upload a PDF first.")
 
@@ -87,7 +84,7 @@ async def get_citations(question: str):
     Separate endpoint to get citations for a question.
     Frontend calls this alongside /query to display sources.
     """
-
+    global faiss_index, bm25_index, chunks 
     if faiss_index is None:
         return {"citations": [], "confidence": 0.0, "found": False}
 

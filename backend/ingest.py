@@ -81,7 +81,8 @@ def save_index(faiss_index, bm25_index, chunks: list[dict], filename: str):
     os.makedirs(INDEX_DIR, exist_ok=True)
     
     # Save FAISS index
-    faiss.write_index(faiss_index, os.path.join(INDEX_DIR, f"{filename}_faiss.index"))
+    # faiss.write_index(faiss_index, os.path.join(INDEX_DIR, f"{filename}_faiss.index"))
+    faiss.write_index(faiss_index, os.path.join(INDEX_DIR, "faiss.index"))
 
     # Save BM25 index and chunk metadata using pickle
     with open(os.path.join(INDEX_DIR, "bm25.pkl"), "wb") as f:

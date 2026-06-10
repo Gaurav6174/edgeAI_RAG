@@ -8,7 +8,7 @@ class QueryRequest(BaseModel):
 
 ##response
 class Citation(BaseModel):
-    test: str
+    text: str
     source: str
     page: Optional[int] = None
 
