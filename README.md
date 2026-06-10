@@ -1,157 +1,381 @@
 # Campus Handbook Bot
 
-Edge-Optimised On-Device RAG System for Institutional Document Q&A
+> On-device RAG system for institutional document Q&A — powered by Llama 3.2 1B, running entirely on NVIDIA Jetson Orin Nano with zero external API calls.
 
-**Team:** Titans  
-**Authors:** Gaurav Chaurasia, Bittu Prajapati
+![Architecture](https://img.shields.io/badge/Architecture-RAG-teal) ![Model](https://img.shields.io/badge/Model-Llama%203.2%201B-coral) ![Hardware](https://img.shields.io/badge/Hardware-Jetson%20Orin%20Nano-green) ![API](https://img.shields.io/badge/API%20Calls-Zero-purple)
 
-## Overview
+---
 
-Campus Handbook Bot is a fully on-device retrieval-augmented generation (RAG) system that lets students and staff ask plain-English questions about institutional documents such as handbooks, fee structures, exam schedules, hostel rules, and policy documents.
+## What it does
 
-Users upload a PDF, ask a question, and receive a direct answer with the exact source cited. The entire pipeline runs locally on NVIDIA Jetson Orin Nano using Llama 3.2 1B, with no internet dependency and no data leaving the device.
+Campus Handbook Bot lets students and staff query institutional documents — handbooks, fee structures, exam schedules, hostel rules — using plain English. Upload a PDF, ask a question, get a direct cited answer. Everything runs locally on the Jetson board. No internet. No cloud. No data leaves the device.
 
-## Use Cases
+---
 
-- Students getting instant answers from long handbooks without reading hundreds of pages.
-- Administrative staff quickly looking up policies during student interactions.
-- Institutions with privacy requirements where documents cannot be sent to external cloud services.
-- Low-connectivity campuses needing a reliable offline knowledge assistant.
+## Key features
 
-## Key Features
+- **Hybrid search** — combines FAISS semantic search with BM25 keyword search via Reciprocal Rank Fusion. Handles both conceptual queries ("what are the hostel rules") and exact lookups ("what is rule 4.2.1") that pure vector search fails on
+- **Cross-encoder reranking** — retrieves top-10 candidates then reranks to top-3 using a cross-encoder before passing context to the LLM, keeping the 1B model's context tight and accurate
+- **Confidence gating** — scores retrieval similarity before invoking the LLM. Queries below the threshold return "not found in handbook" instead of hallucinating an answer
+- **Streaming responses** — answer appears token by token via Ollama's streaming API, masking generation latency on edge hardware
+- **Persistent index** — FAISS + BM25 index saved to disk, survives reboots without re-ingestion
+- **Cited answers** — every response references the exact source chunk, document name, and page number
 
-- Smart search: finds the right answer whether the question is broad or tied to a specific rule number.
-- Honest answers: if the answer is not in the document, the system says so instead of inventing one.
-- Best results first: ranks retrieved content before generation so the model only sees relevant context.
-- Fast replies: streams the answer word by word instead of waiting for the full generation to finish.
-- Always ready: indexed documents persist across reboots, so re-uploading is not required.
-- Cited answers: every response shows exactly which document and section it came from.
+---
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    A[PDF upload] --> B[Text extraction]
-    B --> C[Chunking]
-    C --> D[Dual index\nSemantic: FAISS\nKeyword: BM25]
-    D --> E[Hybrid retrieval\nTop-10]
-    E --> F[Rerank\nTop-3]
-    F --> G[Confidence check]
-    G --> H[Llama 3.2 1B via Ollama\nStreaming]
-    H --> I[Cited answer]
-    I --> J[React frontend]
+```
+INGESTION PHASE
+PDF upload → PyMuPDF extraction → sentence chunking (300 words, 20 overlap)
+         → FAISS dense index (all-MiniLM-L6-v2) + BM25 sparse index → saved to disk
+
+QUERY PHASE
+User query → hybrid retrieval (RRF fusion, top-10)
+          → cross-encoder rerank (top-3)
+          → confidence gate (threshold ≥ 0.35)
+          → Llama 3.2 1B via Ollama (streaming)
+          → cited answer + confidence score → React frontend
 ```
 
-The pipeline combines semantic and keyword search, reranks the best matches, checks confidence, and then generates a cited response through a local LLM.
+---
 
-## Tech Stack
+## Tech stack
 
 | Layer | Tool | Role |
-|---|---|---|
-| LLM | Llama 3.2 1B, Ollama, Q4_K_M quantization | On-device generation with streaming output |
-| Dense Search | FAISS, all-MiniLM-L6-v2 | Semantic similarity retrieval |
-| Sparse Search | BM25, rank-bm25 | Keyword and exact-match retrieval |
+|-------|------|------|
+| LLM | Llama 3.2 1B · Ollama · Q4_K_M | On-device generation, streaming output |
+| Dense search | FAISS + all-MiniLM-L6-v2 | Semantic similarity retrieval |
+| Sparse search | BM25 (rank-bm25) | Keyword and exact-match retrieval |
 | Reranking | cross-encoder/ms-marco-MiniLM-L-6-v2 | Precision rerank of top-10 to top-3 |
-| RAG Framework | LlamaIndex | Chunking, hybrid retrieval, prompt assembly |
-| PDF Parsing | PyMuPDF | Text extraction from institutional PDFs |
-| Backend | FastAPI (async) | Ingest and query REST API, background tasks |
+| PDF parsing | PyMuPDF | Text extraction from institutional PDFs |
+| Backend | FastAPI (async) | Ingest + query REST API |
 | Frontend | React + Vite | Upload UI, streaming chat, citation display |
-| Deployment | Docker Compose | One-command local and Jetson deployment |
+| Deployment | SSH + scp | Two-phase: local dev → Jetson deployment |
 
-## Why On-Device
+---
 
-- Privacy: documents remain on the local device.
-- Reliability: the system works without internet access.
-- Speed: local retrieval and generation reduce cloud round-trips.
-- Control: institutions keep full ownership of their data and workflow.
+## Project structure
 
-## Project Goal
+```
+campus-handbook-bot/
+├── backend/
+│   ├── main.py           — FastAPI entry point, CORS, all API routes
+│   ├── ingest.py         — PDF parse → chunk → embed → dual index
+│   ├── retriever.py      — hybrid FAISS + BM25 search + cross-encoder rerank
+│   ├── llm.py            — Ollama streaming integration
+│   ├── confidence.py     — similarity threshold gate
+│   ├── models.py         — Pydantic request/response schemas
+│   ├── requirements.txt
+│   └── .env
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx
+│   │   ├── api.js        — all fetch calls to FastAPI (single source of truth)
+│   │   └── components/
+│   │       ├── Upload.jsx      — PDF drag-and-drop + ingest trigger
+│   │       ├── Chat.jsx        — streaming chat interface
+│   │       ├── Citation.jsx    — cited source display
+│   │       └── Confidence.jsx  — score badge + "not found" state
+│   ├── package.json
+│   └── vite.config.js
+├── data/
+│   ├── uploads/          — ingested PDFs
+│   └── index/            — persisted FAISS + BM25 index (copy to Jetson)
+└── README.md
+```
 
-The goal of this project is to provide a practical, private, and offline document question-answering assistant for campuses and institutions. It is designed for documents that are frequently referenced but time-consuming to search manually.
+---
 
-## Project Setup Guide
+## Phase 1 — local development
 
-### 1) Prerequisites
+### Prerequisites
 
-- Python 3.10 or newer
-- A local Ollama install with the target model available
-- `pip` and `venv`
+- Python 3.12
+- Node.js 18+
+- [Ollama](https://ollama.com) installed on your system
+- `uv` package manager (`pip install uv`)
 
-If you are using Ollama, pull the model once before starting the API:
+### 1. Pull the model
 
 ```bash
 ollama pull llama3.2:1b
 ```
 
-### 2) Clone and enter the project
+Verify it's available:
 
 ```bash
-git clone https://github.com/Gaurav6174/edgeAI_RAG.git
-cd edgeAI_RAG
+ollama list
+# should show llama3.2:1b
 ```
 
-### 3) Create and activate a virtual environment
+Ollama runs as a background service automatically after install. Verify:
 
 ```bash
-python3 -m venv .venv
+curl http://localhost:11434
+# → Ollama is running
+```
+
+### 2. Backend setup
+
+```bash
+# from project root
+uv venv .venv --python 3.12
 source .venv/bin/activate
+
+uv pip install -r backend/requirements.txt
 ```
 
-### 4) Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 5) Configure environment variables
-
-Create a `backend/.env` file with the local paths and model settings used by the app:
+Create `backend/.env`:
 
 ```env
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=llama3.2:1b
 EMBED_MODEL=sentence-transformers/all-MiniLM-L6-v2
 INDEX_DIR=../data/index
 UPLOAD_DIR=../data/uploads
-OLLAMA_HOST=http://localhost:11434
-OLLAMA_MODEL=llama3.2:1b
 TOP_K=10
 RERANK_TOP_N=3
+CONFIDENCE_THRESHOLD=0.35
 ```
 
-### 6) Start the backend API
-
-The backend imports modules relative to the `backend/` directory, so start it from there:
+Start the backend:
 
 ```bash
 cd backend
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --port 8000
 ```
 
-### 7) Upload a PDF and build the index
+> Use `--reload` only when actively editing backend code. Without it, the in-memory index persists correctly between requests.
 
-Send a PDF to the ingest endpoint to create the FAISS and BM25 indexes:
+Verify at `http://localhost:8000/health`:
+```json
+{"status": "ok", "index_loaded": false, "chunks_count": 0}
+```
+
+Interactive API docs at `http://localhost:8000/docs`.
+
+### 3. Frontend setup
 
 ```bash
-curl -F "file=@/path/to/handbook.pdf" http://localhost:8000/ingest
+cd frontend
+npm install
+npm run dev
 ```
 
-### 8) Ask a question
+Open `http://localhost:5173`.
 
-Once ingestion is complete, query the backend:
+> The Vite proxy forwards all `/ingest`, `/query`, `/citations`, and `/health` calls to `localhost:8000` automatically — no CORS issues.
+
+### 4. Test the full pipeline
+
+1. Open `http://localhost:5173`
+2. Upload a PDF using the upload card (drag and drop supported)
+3. Wait for the "Indexed N chunks" confirmation
+4. Type a question in the chat
+5. Answer streams in token by token with citations and confidence score below
+
+---
+
+## Phase 2 — Jetson Orin Nano deployment
+
+### Before switching to the Jetson
+
+Build and verify the full pipeline locally first. Then prepare the index for transfer:
 
 ```bash
-curl -X POST http://localhost:8000/query \
-    -H "Content-Type: application/json" \
-    -d '{"question":"What is the hostel fee refund policy?"}'
+# confirm index files exist
+ls data/index/
+# should show: faiss.index  bm25.pkl  chunks.pkl  embeddings.npy
 ```
 
-### 9) Check citations
+These files are the pre-built index — transferring them means no re-ingestion or re-embedding on the board.
 
-Use the citations endpoint to inspect the supporting chunks returned for a question:
+### Transfer files to Jetson
 
 ```bash
-curl "http://localhost:8000/citations?question=What%20is%20the%20hostel%20fee%20refund%20policy%3F"
+# copy the pre-built index (no re-ingestion needed on Jetson)
+scp -r data/index/ username@<jetson-ip>:/home/username/campus-handbook-bot/data/
+
+# copy the backend
+scp -r backend/ username@<jetson-ip>:/home/username/campus-handbook-bot/
+
+# copy the frontend build
+cd frontend && npm run build
+scp -r dist/ username@<jetson-ip>:/home/username/campus-handbook-bot/frontend-dist/
+
+# copy any PDF you want available on the board
+scp data/uploads/handbook.pdf username@<jetson-ip>:/home/username/campus-handbook-bot/data/uploads/
 ```
 
-## Deployment Concept
+### On the Jetson board
 
-The architecture is designed for containerised deployment with Docker Compose, making it suitable for both local development and edge deployment on Jetson hardware.
+```bash
+# SSH into the board
+ssh username@<jetson-ip>
+
+# pull the model (Ollama is pre-installed on the board)
+ollama pull llama3.2:1b
+
+# set up Python environment
+cd campus-handbook-bot
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+
+# start the backend — identical command to local
+cd backend
+uvicorn main:app --port 8000
+```
+
+The `.env` file is identical — `OLLAMA_HOST=http://localhost:11434` works on Jetson too because Ollama runs locally there as well.
+
+### Verify GPU is being used
+
+In a separate SSH session while the backend is running:
+
+```bash
+tegrastats
+```
+
+Look for GPU utilization going up when a query is processed. If it stays at 0%, Ollama isn't using the GPU — check JetPack version (`jetpack --version`) and ensure CUDA libraries are linked correctly.
+
+### Serve the frontend
+
+```bash
+# on the Jetson, serve the built frontend
+cd frontend-dist
+npx serve -s . -l 3000
+```
+
+Access the UI from any browser on the same network at `http://<jetson-ip>:3000`.
+
+---
+
+## API reference
+
+### `POST /ingest`
+
+Upload a PDF and build the hybrid index.
+
+**Request:** `multipart/form-data` with `file` field (PDF only)
+
+**Response:**
+```json
+{
+  "message": "Ingestion complete",
+  "chunks_indexed": 153,
+  "filename": "handbook.pdf"
+}
+```
+
+---
+
+### `POST /query`
+
+Stream an answer for a question. Returns a plain text stream.
+
+**Request:**
+```json
+{ "question": "what is the hostel checkout time?" }
+```
+
+**Response:** `text/plain` stream — tokens arrive one by one.
+
+---
+
+### `GET /citations?question=...`
+
+Get citations and confidence score for a question (non-streaming).
+
+**Response:**
+```json
+{
+  "citations": [
+    {
+      "text": "Students must vacate hostel rooms by 10:00 AM on the day of checkout...",
+      "source": "handbook.pdf",
+      "page": 42
+    }
+  ],
+  "confidence": 0.812,
+  "found": true
+}
+```
+
+---
+
+### `GET /health`
+
+Check backend status and index state.
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "index_loaded": true,
+  "chunks_count": 153
+}
+```
+
+---
+
+## Configuration
+
+All tunable parameters live in `backend/.env`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OLLAMA_HOST` | `http://localhost:11434` | Ollama server URL |
+| `OLLAMA_MODEL` | `llama3.2:1b` | Model name as listed in `ollama list` |
+| `EMBED_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | HuggingFace embedding model |
+| `INDEX_DIR` | `../data/index` | Where to persist the FAISS + BM25 index |
+| `UPLOAD_DIR` | `../data/uploads` | Where uploaded PDFs are saved |
+| `TOP_K` | `10` | Number of candidates retrieved before reranking |
+| `RERANK_TOP_N` | `3` | Number of chunks passed to the LLM after reranking |
+| `CONFIDENCE_THRESHOLD` | `0.35` | Minimum reranker score to trigger LLM — below this returns "not found" |
+
+---
+
+## Troubleshooting
+
+**`ECONNREFUSED 127.0.0.1:8000`** — backend isn't running. Start it with `uvicorn main:app --port 8000` in a separate terminal with the venv activated.
+
+**`No documents indexed yet`** — upload a PDF first via the UI, then query. If you already uploaded and restarted uvicorn, the in-memory index was wiped — re-upload.
+
+**`faiss-cpu` install fails** — you're on Python 3.13. Recreate the venv with Python 3.12: `uv venv .venv --python 3.12`.
+
+**Ollama `address already in use`** — Ollama is already running as a system service (expected). Don't run `ollama serve` manually. Just use it.
+
+**Answer appears all at once instead of streaming** — check that `streamQuery` in `api.js` uses a `ReadableStream` reader, not `await response.json()`.
+
+**Low confidence on valid questions** — your chunks may be too large or the document has complex formatting. Try reducing `CHUNK_SIZE` to 150 in `ingest.py`, delete `data/index/`, and re-ingest.
+
+**GPU not used on Jetson** — verify with `tegrastats`. Ensure JetPack 6 is installed and Ollama was installed after JetPack (so it links against the correct CUDA libraries).
+
+---
+
+## How the confidence score works
+
+Every query goes through three stages before reaching the LLM:
+
+1. **Hybrid retrieval** — FAISS semantic search + BM25 keyword search, fused via Reciprocal Rank Fusion to get top-10 candidates
+2. **Cross-encoder reranking** — a second model scores each (query, chunk) pair together rather than independently, giving a much more accurate relevance score; top-3 kept
+3. **Confidence gate** — if the best reranker score is below `CONFIDENCE_THRESHOLD` (0.35), the system responds "not found" without calling the LLM
+
+This prevents the 1B model from hallucinating answers to questions the document doesn't cover — one of the most common failure modes in small model RAG systems.
+
+---
+
+## Team
+
+Built as part of the AiProff Edge AI Internship Program.
+
+- RAG pipeline, backend, deployment — Gaurav Chaurasia
+- React frontend — [teammate name]
+
+---
+
+## License
+
+MIT
