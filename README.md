@@ -372,7 +372,7 @@ This prevents the 1B model from hallucinating answers to questions the document 
 Built as part of the AiProff Edge AI Internship Program.
 
 - RAG pipeline, backend, deployment — Gaurav Chaurasia
-- React frontend — [teammate name]
+- React frontend — Bittu Prajapti
 
 ---
 
