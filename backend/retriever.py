@@ -6,9 +6,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-EMBED_MODEL = os.getenv("EMBED_MODEL")
-TOP_K = int(os.getenv("TOP_K", 10))
-RERANK_TOP_N = int(os.getenv("RERANK_TOP_N", 3))
+EMBED_MODEL =       os.getenv("EMBED_MODEL")
+TOP_K =             int(os.getenv("TOP_K", 10))
+RERANK_TOP_N =      int(os.getenv("RERANK_TOP_N", 3))
 
 # Load models at module level to avoid reloading on every call
 embed_model = SentenceTransformer(EMBED_MODEL)

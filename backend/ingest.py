@@ -15,8 +15,6 @@ INDEX_DIR   = os.getenv("INDEX_DIR")
 CHUNK_SIZE   = 300
 CHUNK_OVERLAP = 20
 
-# Load the embedding model, once at module level so it
-# doesn't reload on every ingest call
 embed_model = SentenceTransformer(EMBED_MODEL)
 
 def extract_text_from_pdf(pdf_path: str) -> list[dict]:

@@ -9,30 +9,31 @@ OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
 
 def build_prompt(question: str, chunks: list[dict]) -> str:
-    """
-        Constructs a prompt for the LLM by combining the question
-        with the retrieved chunks of information.
-    """
-    context_block = []
+    context_blocks = []
     for i, chunk in enumerate(chunks):
-        context_block.append(
-        f"Source: {chunk['source']} (Page {chunk['page']})\n{chunk['text']}\n"
-        f"{chunk['text']}"
+        context_blocks.append(
+            f"[Source {i+1} — {chunk['source']}, page {chunk.get('page', '?')}]\n"
+            # f"{chunk['text']}"
         )
 
-    context = "\n\n".join(context_block)
+    context = "\n\n".join(context_blocks)
 
-    prompt = f"""You are a helpful campus handbook assistant.
-                Answer the question using ONLY the context provided below.
-                If the answer is not in the context, say "I couldn't find this in the handbook."
-                Always mention which Source number your answer comes from.
+    prompt = f"""You are a friendly and knowledgeable campus assistant. \
+    Students come to you with questions about campus life, rules, fees, and procedures. \
+    You give clear, helpful answers in a warm and approachable tone — like a senior student \
+    who knows the handbook inside out.
 
-                CONTEXT:
-                {context}
+    Use ONLY the information in the sources below to answer. \
+    If the answer isn't there, say so honestly. \
+    Always mention which source your answer comes from, naturally worked into your response \
+    (e.g. "According to the handbook..." or "As mentioned on page 12...").
 
-                QUESTION: {question}
+    Sources:
+    {context}
 
-                ANSWER:"""
+    Student's question: {question}
+
+    Your answer:"""
 
     return prompt
 
@@ -48,8 +49,10 @@ async def query_ollama_stream(question: str, chunks: list[dict]):
         "stream": True,  #enable token streaming
         "options": {
             "num_predict": 512,
-            "temperature": 0.1,
+            "temperature": 0.4,
             "top_p": 0.9,
+            "top_k": 40,
+            "repeat_penalty": 1.1
         }
     }
 
@@ -73,10 +76,7 @@ async def query_ollama_stream(question: str, chunks: list[dict]):
 
 async def query_ollama(question: str, chunks: list[dict]) -> str:
     """
-        Sends the prompt to the Ollama LLM and returns the full response.
-        Non-streaming version — collects all tokens and returns
-        the full answer as a string.
-        Used internally for testing.
+        Sends the prompt to the Ollama LLM 
     """
     full_response = ""
     async for token in query_ollama_stream(question, chunks):
