@@ -5,22 +5,17 @@ import httpx
 import os
 from sentence_transformers import SentenceTransformer, util
 
-# ── config ────────────────────────────────────────────────────
+
 BASE_URL        = "http://localhost:8000"
 CSV_PATH        = "../data/eval/questions.csv"
 REPORT_PATH     = "../data/eval/eval_report.json"
 SIMILARITY_THRESHOLD = 0.6   # answer is "correct" if similarity >= this
-# ──────────────────────────────────────────────────────────────
+
 
 embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
 
 def semantic_similarity(text1: str, text2: str) -> float:
-    """
-    Compare expected vs actual answer using embeddings.
-    Not exact match — natural language answers vary in wording
-    but should be semantically close to the expected answer.
-    """
     if not text1 or not text2:
         return 0.0
     emb1 = embedder.encode(text1, convert_to_tensor=True)
@@ -29,10 +24,7 @@ def semantic_similarity(text1: str, text2: str) -> float:
 
 
 async def ask(question: str, client: httpx.AsyncClient) -> dict:
-    """
-    Calls /citations and /query on the live backend.
-    Returns answer text, confidence score, and found flag.
-    """
+
     # get citations + confidence (non-streaming)
     cit_res  = await client.get(
         f"{BASE_URL}/citations",
@@ -40,7 +32,7 @@ async def ask(question: str, client: httpx.AsyncClient) -> dict:
     )
     cit_data = cit_res.json()
 
-    # get full answer by consuming the stream
+    # get full answer by taking the stream
     answer = ""
     async with client.stream(
         "POST",
@@ -81,7 +73,7 @@ async def evaluate(csv_path: str):
             try:
                 result = await ask(question, client)
             except Exception as e:
-                print(f"  ✗ Request failed: {e}")
+                print(f"   Request failed: {e}")
                 results.append({
                     "question":      question,
                     "expected":      expected,
@@ -131,7 +123,7 @@ async def evaluate(csv_path: str):
                 "outcome":       outcome,
             })
 
-    # ── compute metrics ───────────────────────────────────────
+    # compute metrics 
     TP  = sum(1 for r in results if r["outcome"] == "TP")
     FP  = sum(1 for r in results if "FP" in r["outcome"])
     FN  = sum(1 for r in results if r["outcome"] == "FN")
@@ -142,7 +134,7 @@ async def evaluate(csv_path: str):
     f1        = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
     accuracy  = (TP + TN) / len(results)   if results else 0
 
-    # ── build report ──────────────────────────────────────────
+    # build report 
     report = {
         "total_questions": len(results),
         "metrics": {
@@ -171,10 +163,10 @@ async def evaluate(csv_path: str):
     with open(REPORT_PATH, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
 
-    # ── print summary ─────────────────────────────────────────
-    print("\n" + "=" * 50)
+    # summary 
+    
     print("EVALUATION RESULTS")
-    print("=" * 50)
+    print("\n")
     print(f"Total questions : {len(results)}")
     print(f"Accuracy        : {accuracy:.1%}")
     print(f"Precision       : {precision:.1%}")
@@ -183,18 +175,18 @@ async def evaluate(csv_path: str):
     print(f"\nTP: {TP}  TN: {TN}  FP: {FP}  FN: {FN}")
     print(f"\nFull report → {REPORT_PATH}")
 
-    # ── weak spot analysis ────────────────────────────────────
+    # weak spot analysis 
     fn_examples = [r for r in results if r["outcome"] == "FN"][:3]
     fp_examples = [r for r in results if "FP" in r["outcome"]][:3]
 
     if fn_examples:
-        print("\n── Questions the system MISSED (FN) ────────")
+        print("\n Questions the system MISSED (FN) ")
         for r in fn_examples:
             print(f"  Q: {r['question'][:70]}")
             print(f"  Confidence was: {r['confidence']}")
 
     if fp_examples:
-        print("\n── Questions answered WRONGLY (FP) ─────────")
+        print("\n Questions answered WRONGLY (FP) ")
         for r in fp_examples:
             print(f"  Q: {r['question'][:70]}")
             print(f"  Similarity: {r['similarity']}")

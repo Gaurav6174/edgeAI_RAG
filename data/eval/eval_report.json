@@ -1,16 +1,16 @@
 {
   "total_questions": 59,
   "metrics": {
-    "accuracy": 0.153,
-    "precision": 0,
-    "recall": 0.0,
-    "f1_score": 0
+    "accuracy": 0.169,
+    "precision": 0.022,
+    "recall": 0.2,
+    "f1_score": 0.039
   },
   "breakdown": {
-    "true_positives": 0,
+    "true_positives": 1,
     "true_negatives": 9,
-    "false_positives": 0,
-    "false_negatives": 50
+    "false_positives": 45,
+    "false_negatives": 4
   },
   "interpretation": {
     "TP": "Answerable question \u2014 system answered correctly",
@@ -22,112 +22,112 @@
     {
       "question": "When was the Student Handbook approved by the Board of Regents?",
       "expected": "May 16 2014",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there, I'm your friendly campus assistant. I'd be happy to help you with any questions you have about campus life or rules.\n\nAccording to our student handbook (Source 1), page 3, the Student Handbook was approved by the Board of Regents in June 2018. It's always a good idea to check the most rece",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.075,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 7.55,
+      "similarity": 0.235,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "Who is responsible for maintaining good order in the classroom?",
       "expected": "The instructor",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your question about campus life. According to [Student_Handbook.pdf, page 1], it's the responsibility of all students, including faculty and staff members, to maintain good order in the classroom.\n\nIn fact, Section 3.2 of the handbook states that \"All students ar",
       "answerable": true,
-      "system_found": false,
-      "confidence": -7.143,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 7.603,
+      "similarity": 0.3,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "Texas Tech Law students are subject to which two conduct codes?",
       "expected": "The Code of Student Conduct and the Honor Code of the School of Law",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hello there, Texas Tech Law student! I'm happy to help you with your questions about campus life. According to the handbook (Source 1), Texas Tech Law students are subject to both Code 12 - Harassment and/or Intimidation and Code 21 - Alcohol and Other Substances.\n\nAs mentioned on page 27 of the han",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.26,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 7.865,
+      "similarity": 0.497,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "What is the Texas Tech University Vision?",
       "expected": "Texas Tech is a great public research University where students succeed, knowledge is advanced, and global engagement is championed.",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hello there! I'm so glad you came to me with your questions about campus life. As a friendly and knowledgeable campus assistant, I'd be happy to help.\n\nAccording to our student handbook (Source 1), the Texas Tech University Vision is actually stated on page 12 of the Student Handbook PDF, which read",
       "answerable": true,
-      "system_found": false,
-      "confidence": -10.858,
-      "similarity": 0.0,
-      "correct": false,
-      "outcome": "FN"
+      "system_found": true,
+      "confidence": 0.912,
+      "similarity": 0.634,
+      "correct": true,
+      "outcome": "TP"
     },
     {
       "question": "What does an administrative hold prevent access to?",
       "expected": "Registration, release of transcripts, and course add/drops",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life. According to the handbook (Student_Handbook.pdf, page 3), an administrative hold prevents access to a student's dorm room or residence hall for \"a specified period of time\" due to disciplinary actions, such as failing a course or",
       "answerable": true,
-      "system_found": false,
-      "confidence": -9.927,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 4.404,
+      "similarity": 0.17,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "How many full-time faculty members serve on the Code of Student Conduct Review Committee?",
       "expected": "Three (3)",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! As a friendly campus assistant, I'm here to help you with any questions you have about campus life or rules.\n\nAccording to our student handbook (Source 1), which is based on the University's policies and procedures, the Code of Student Conduct Review Committee consists of one member from e",
       "answerable": true,
-      "system_found": false,
-      "confidence": -10.923,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 7.216,
+      "similarity": 0.144,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "What is the quorum for the Code of Student Conduct Review Committee?",
       "expected": "Five (5) members",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life. According to our student handbook (Source 1), which states on page 7 that \"The Code of Student Conduct Review Committee shall consist of at least three members.\"\n\nSo, the quorum for this committee is indeed three members. It's al",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.028,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 5.487,
+      "similarity": 0.397,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "How is disciplinary good standing defined?",
       "expected": "A student not currently on disciplinary probation or any level of disciplinary suspension/expulsion who has fulfilled all imposed requirements",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life. According to the student handbook (Source 1), disciplinary good standing is defined as \"an individual's overall academic and behavioral performance, including attendance, grades, participation in extracurricular activities, and c",
       "answerable": true,
-      "system_found": false,
-      "confidence": -10.547,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 9.494,
+      "similarity": 0.398,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "What is the standard of proof used by Student Conduct Hearing Officers?",
       "expected": "Preponderance of evidence",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life. According to the student handbook (Source 1), which states on page 5 that \"all allegations of misconduct must be supported by substantial evidence\" and further clarifies that \"substantial evidence means more than just hearsay or ",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.241,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 5.273,
+      "similarity": 0.358,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "How is religious holy day defined?",
       "expected": "A holy day observed by a religion whose places of worship are exempt from property taxation under Texas Tax Code \u00a7 11.20",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your question about campus life.\n\nAccording to the handbook (Student_Handbook.pdf, page 5), a religious holy day is defined as a day when students are expected to observe their faith and participate in related activities. This can include attending worship servic",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.154,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 7.421,
+      "similarity": 0.483,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "Who is considered a student according to the handbook?",
@@ -135,7 +135,7 @@
       "got": "I couldn't find this in the handbook.",
       "answerable": true,
       "system_found": false,
-      "confidence": -7.172,
+      "confidence": -0.483,
       "similarity": 0.0,
       "correct": false,
       "outcome": "FN"
@@ -143,57 +143,57 @@
     {
       "question": "How many members compose the University Discipline Committee pool?",
       "expected": "Thirty (30)",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hello there! I'm happy to help you with your questions about campus life. According to [Source 1], which states on page 7 that \"The University Discipline Committee is a group of student representatives elected by their peers,\" it appears that there are no specific numbers provided for the compositio",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.093,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 5.731,
+      "similarity": 0.121,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "In cases involving academic integrity which groups comprise the University Discipline Committee?",
       "expected": "Only students and faculty",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there, student! I'm happy to help you with your questions about campus life.\n\nAccording to the handbook (Student_Handbook.pdf, page 6), in cases involving academic integrity, the University Discipline Committee consists of the following groups:\n\n* The Dean's Office\n* The Academic Integrity Commit",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.069,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 2.596,
+      "similarity": 0.318,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "Who is the principal agency for the administration of student discipline?",
       "expected": "The Office of the Vice Provost Undergraduate Education and Student Affairs",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life.\n\nAccording to the handbook (Student_Handbook.pdf, page 7), the principal agency for the administration of student discipline is the Student Conduct Office. They are responsible for investigating and addressing incidents of miscon",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.167,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 0.648,
+      "similarity": 0.464,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "What is the recommended timeframe for reporting alleged violations to the Office of Student Conduct?",
       "expected": "Within ten (10) University working days of the alleged incident",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life and rules. According to [Source 1], which states on page 10 that \"Reporting incidents should be done in a timely manner, ideally within 24 hours of the incident occurring.\" This suggests that it's best to report alleged violations",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.222,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 8.711,
+      "similarity": 0.568,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "Within how many days should incidents be resolved after notice is given?",
       "expected": "60 days",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life. According to the student handbook (Source 1), incidents are typically resolved within a reasonable time frame, but it doesn't specify exactly how many days.\n\nHowever, as mentioned on page 55 of the same handbook, incidents can be",
       "answerable": true,
-      "system_found": false,
-      "confidence": -9.961,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 6.573,
+      "similarity": 0.282,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "What is the minimum notice period required for a student's scheduled appearance?",
@@ -201,7 +201,7 @@
       "got": "I couldn't find this in the handbook.",
       "answerable": true,
       "system_found": false,
-      "confidence": -11.232,
+      "confidence": -1.748,
       "similarity": 0.0,
       "correct": false,
       "outcome": "FN"
@@ -209,24 +209,24 @@
     {
       "question": "What does academic dishonesty include?",
       "expected": "Cheating, plagiarism, collusion, falsifying academic records, and misrepresenting facts",
-      "got": "I couldn't find this in the handbook.",
+      "got": "I'm happy to help you with that. According to the student handbook, academic dishonesty includes any actions that involve cheating, plagiarism, or other forms of unauthorized use of someone else's work. This can include things like copying someone else's assignment, passing off someone else's work a",
       "answerable": true,
-      "system_found": false,
-      "confidence": -10.261,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 8.153,
+      "similarity": 0.552,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "What is self-plagiarism?",
       "expected": "Submission of the same academic work more than once without prior permission of the instructor",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your question about campus life.\n\nSelf-plagiarism refers to the act of using someone else's work or ideas without properly crediting them. This can include copying and pasting text from one source into another, or passing off someone else's research as your own.\n",
       "answerable": true,
-      "system_found": false,
-      "confidence": -7.043,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 4.845,
+      "similarity": 0.266,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "How is intimidation defined in the handbook?",
@@ -234,7 +234,7 @@
       "got": "I couldn't find this in the handbook.",
       "answerable": true,
       "system_found": false,
-      "confidence": -9.572,
+      "confidence": -2.661,
       "similarity": 0.0,
       "correct": false,
       "outcome": "FN"
@@ -242,167 +242,167 @@
     {
       "question": "What is nonconsensual sexual contact?",
       "expected": "Intentional sexual touching of another's private areas without consent",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there, I'm happy to help you with that. According to the student handbook (Source 1), nonconsensual sexual contact refers to any unwanted or forced sexual activity between two individuals who do not have a mutual consent to engage in such activities.\n\nAs mentioned on page 42 of the student handbo",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.177,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 5.641,
+      "similarity": 0.556,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "Is student consent a defense in a hazing disciplinary proceeding?",
       "expected": "No",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life and rules.\n\nRegarding your question, according to the handbook (Source 1), Section 3.2 of the Student Handbook states that \"Student consent is not a defense in a hazing disciplinary proceeding.\" This means that even if an individu",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.149,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 5.539,
+      "similarity": -0.013,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "Under what age can parents be notified of alcohol or drug violations?",
       "expected": "Under the age of 21",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there, student! I'm happy to help you with your questions about campus life. According to the handbook (Student_Handbook.pdf, page 35), under Section 3.1.2, \"Notification of Off-Campus Absence\", parents or guardians can be notified of alcohol or drug violations if they are:\n\n\"If a student is abse",
       "answerable": true,
-      "system_found": false,
-      "confidence": -9.723,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 6.172,
+      "similarity": 0.177,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "What is the maximum administrative fee for students found responsible for violating the Code of Student Conduct?",
       "expected": "$100.00",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with any questions about campus life or rules. As a friendly and knowledgeable campus assistant, I can tell you that according to our student handbook (Source 1), [Student_Handbook.pdf, page 31], the maximum administrative fee for students found responsible for violat",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.149,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 9.185,
+      "similarity": 0.197,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "How long are disciplinary records maintained on file?",
       "expected": "A minimum of seven (7) years",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life.\n\nAccording to the handbook (Student_Handbook.pdf, page 32), disciplinary records are typically maintained for a period of one year from the date of the incident. However, it's worth noting that the university may request addition",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.301,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 5.226,
+      "similarity": 0.252,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "What phrase is used on a transcript to note a time-limited disciplinary suspension?",
       "expected": "Disciplinary Dismissal",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm your friendly campus assistant. Don't worry, I've got you covered.\n\nAccording to the student handbook (Source 1), a transcript notation for a time-limited disciplinary suspension would be \"Temporary Suspension\" or simply \"Suspension\". However, it's worth noting that the exact phrase ma",
       "answerable": true,
-      "system_found": false,
-      "confidence": -10.995,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 8.569,
+      "similarity": 0.458,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "How is disciplinary expulsion defined?",
       "expected": "When a student is permanently withdrawn and separated from the University",
-      "got": "I couldn't find this in the handbook.",
+      "got": "I'm happy to help you with your question about disciplinary expulsion. According to the handbook (Student_Handbook.pdf, page 4), \"Disciplinary expulsion\" means the permanent removal of a student from the university due to serious misconduct or behavior that poses a threat to the safety and well-bein",
       "answerable": true,
-      "system_found": false,
-      "confidence": -10.679,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 5.18,
+      "similarity": 0.53,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "What phrase is used on a transcript to note disciplinary expulsion?",
       "expected": "Administrative Dismissal",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life. \n\nWhen it comes to disciplinary expulsions, the phrase that's often noted on a transcript is \"Disciplinary Expulsion\". This can be found in Section 5 of the Student Handbook, specifically under the heading \"Academic and Administr",
       "answerable": true,
-      "system_found": false,
-      "confidence": -9.791,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 6.922,
+      "similarity": 0.36,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "Within how many days must a conduct appeal be submitted?",
       "expected": "Five (5) University working days of receiving the written decision",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life.\n\nAccording to the handbook (Student_Handbook.pdf, page 37), within 30 days of the alleged misconduct, an appeal can be submitted. This is specified in Section 3.1.2 of the handbook, which states that \"an appeal must be submitted ",
       "answerable": true,
-      "system_found": false,
-      "confidence": -10.989,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 3.917,
+      "similarity": 0.464,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "Who is the designated appeal officer for cases involving academic dishonesty?",
       "expected": "The Associate Academic Dean of the college",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life. According to my knowledge, as mentioned on page 35 of the student handbook, the designated appeal officer for cases involving academic dishonesty is the Dean of Students Office.\n\nIf you're facing issues or concerns related to aca",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.187,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 10.746,
+      "similarity": 0.438,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "How many weeks prior to application deadlines must a student with a hold request readmission?",
       "expected": "At least three (3) weeks",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! As your friendly campus assistant, I'm happy to help you navigate the process.\n\nAccording to the handbook (Source 1), which states on page 37 that \"Students who have been away from campus for more than two semesters or have a hold on their account are not eligible for immediate readmission",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.17,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 5.659,
+      "similarity": 0.185,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "What temporary grade is assigned during an academic integrity adjudication process?",
       "expected": "X",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life. According to the student handbook (Source 1), during an academic integrity adjudication process, a temporary grade of \"F\" is assigned to students who are found guilty of cheating or other forms of academic dishonesty.\n\nHowever, a",
       "answerable": true,
-      "system_found": false,
-      "confidence": -10.708,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 6.467,
+      "similarity": 0.049,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "Who should students contact to report discriminatory harassment?",
       "expected": "The Deputy Title IX Coordinator for Students",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life. According to the handbook (Source 1), students can report discriminatory harassment to the Dean of Students or the Title IX Coordinator.\n\nIf that doesn't work out, students can also contact the Office of Inclusion and Diversity (",
       "answerable": true,
-      "system_found": false,
-      "confidence": -10.777,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 3.418,
+      "similarity": 0.562,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "If a student is ill for more than one week who should they notify regarding absences?",
       "expected": "Their academic dean",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life. \n\nAccording to the handbook (Source 1), if a student is ill and needs to take time off, it's recommended that they notify their department or instructor as soon as possible. However, if they're feeling unwell for more than one we",
       "answerable": true,
-      "system_found": false,
-      "confidence": -10.177,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 4.788,
+      "similarity": 0.084,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "Where must a student with a disability register to seek a remedy?",
       "expected": "Student Disability Services",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life.\n\nAccording to the handbook (Student_Handbook.pdf, page 47), if you have a disability and need assistance or support, you don't need to register in advance. You can simply speak with your academic advisor, a member of the Disabili",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.288,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 3.953,
+      "similarity": 0.576,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "What is the credit hour threshold for the University housing requirement?",
@@ -410,7 +410,7 @@
       "got": "I couldn't find this in the handbook.",
       "answerable": true,
       "system_found": false,
-      "confidence": -11.333,
+      "confidence": -0.795,
       "similarity": 0.0,
       "correct": false,
       "outcome": "FN"
@@ -418,156 +418,156 @@
     {
       "question": "What is the mileage radius for a housing exemption when living with parents?",
       "expected": "Within a 60-mile radius of Texas Tech University",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there, student! I'm happy to help you with your questions about campus life. According to [Source 1], which states on page 51 that \"For students who live with their parents, up to 50 miles is considered a reasonable mileage radius for a housing exemption.\"\n\nSo, if you're living with your parents ",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.22,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 1.694,
+      "similarity": 0.348,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "How many working days before intended use must a solicitation request be submitted?",
       "expected": "At least six (6) University working days",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your campus-related questions.\n\nAccording to the student handbook (Source 1), Section 3.2.4, a solicitation request must be submitted at least 7 working days before intended use. This is stated on page 76 of the Student Handbook.pdf document.",
       "answerable": true,
-      "system_found": false,
-      "confidence": -10.859,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 0.85,
+      "similarity": 0.443,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "What is the maximum size for posters displayed on University bulletin boards?",
       "expected": "18\u201d x 24\u201d",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life. According to [Source 1], which states that \"posters are limited to a maximum size of 2 feet by 4 feet\" (page 56), it seems like the University bulletin boards have some restrictions on poster sizes.\n\nHowever, if we're talking abo",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.115,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 1.987,
+      "similarity": 0.168,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "What is the minimum membership size for a registered student organization?",
       "expected": "Five students (including president and treasurer)",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life. According to [Source 1], which states on page 63 that \"A student organization must have at least two (2) registered students to be eligible for membership,\" the minimum membership size is indeed two.\n\nHowever, if you're looking f",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.15,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 3.891,
+      "similarity": 0.366,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "How often must a student organization complete the registration process?",
       "expected": "Annually",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life.\n\nAccording to [Source 1], which is our official handbook, student organizations are required to register with Student Affairs every semester. This means they need to submit their registration form and payment by the designated de",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.191,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 5.414,
+      "similarity": 0.138,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "How many working days does an organization have to update their profile after changing advisors?",
       "expected": "Ten (10) University working days",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life.\n\nAccording to the handbook (Source 1), organizations are required to update their profile within a certain timeframe after changing advisors. Specifically, it says on page 64 that an organization must update its profile within 10",
       "answerable": true,
-      "system_found": false,
-      "confidence": -10.444,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 3.576,
+      "similarity": 0.39,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "What is the minimum GPA requirement for readmission after a voluntary withdrawal?",
       "expected": "2.0 GPA",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life. According to the student handbook (Source 1), as mentioned on page 86, the minimum GPA required for readmission after a voluntary withdrawal is 2.0.\n\nHowever, if you're referring to a non-voluntary withdrawal or if you've had a g",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.204,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 3.604,
+      "similarity": 0.419,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "How is a direct threat defined in the context of involuntary withdrawal?",
       "expected": "A high probability of substantial harm based on observation of conduct and statements",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you understand the rules and regulations on campus. According to the student handbook (Source 1), a direct threat refers to a situation where an individual poses a significant risk to their own safety or the safety of others, such as making threats against themselves or o",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.266,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 3.049,
+      "similarity": 0.421,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "Within how many working days of an assessment must an involuntary withdrawal hearing be scheduled?",
       "expected": "Five (5) University working days",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life.\n\nAccording to the student handbook (Source 1), Section 3.5, an involuntary withdrawal hearing can only be scheduled within 20 working days of receiving a notification from the university regarding the assessment result.\n\nIn other",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.279,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 3.931,
+      "similarity": 0.373,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "Who chairs the Involuntary Withdrawal Committee?",
       "expected": "The Dean of Students",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there! I'm happy to help you with your questions about campus life.\n\nAccording to the student handbook (Student_Handbook.pdf, page 85), the Involuntary Withdrawal Committee is chaired by the Dean of Students. This committee reviews and investigates cases of involuntary withdrawal from the univers",
       "answerable": true,
-      "system_found": false,
-      "confidence": -10.467,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 6.155,
+      "similarity": 0.384,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "How many days does the Dean of Students have to notify a student of an involuntary withdrawal decision?",
       "expected": "Five (5) University working days",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hello there! I'm happy to help you with your questions about campus life. According to [Source 1], which is Chapter 3, Section 5 of the Student Handbook, \"The dean's office must provide written notice to the student in a timely manner if the student is involuntarily withdrawn from the university.\"\n\n",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.194,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 7.74,
+      "similarity": 0.342,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "Within how many hours must an involuntarily withdrawn student vacate university housing?",
       "expected": "48 hours",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hello there! I'm happy to help you with your questions about campus life.\n\nAccording to the handbook (Source 1), Section 3.01, an involuntarily withdrawn student is defined as a student who has been removed from university housing due to unsatisfactory behavior or other reasons. If that's what happe",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.266,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 6.385,
+      "similarity": 0.231,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "How long is the wait period for readmission eligibility after an involuntary withdrawal?",
       "expected": "One calendar year",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hello there! I'm happy to help you with your questions about campus life. As a friendly and knowledgeable campus assistant, I'll do my best to provide you with clear and helpful answers.\n\nAccording to the handbook (Source 1), which states that \"A student may be eligible for readmission after a one-y",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.215,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 3.57,
+      "similarity": 0.047,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "What is the readmission deadline for fall enrollment after an involuntary withdrawal?",
       "expected": "May 1",
-      "got": "I couldn't find this in the handbook.",
+      "got": "Hi there, I'm happy to help you with your questions about campus life. According to [Source 1], which is our student handbook (Student_Handbook.pdf, page 86), the readmission deadline for fall enrollment after an involuntary withdrawal is two semesters from the date of withdrawal.\n\nIn other words, i",
       "answerable": true,
-      "system_found": false,
-      "confidence": -11.347,
-      "similarity": 0.0,
+      "system_found": true,
+      "confidence": 7.32,
+      "similarity": 0.225,
       "correct": false,
-      "outcome": "FN"
+      "outcome": "FP_wrong"
     },
     {
       "question": "What is the capital of France?",
@@ -575,7 +575,7 @@
       "got": "I couldn't find this in the handbook.",
       "answerable": false,
       "system_found": false,
-      "confidence": -10.13,
+      "confidence": -11.073,
       "similarity": 0.0,
       "correct": false,
       "outcome": "TN"
@@ -586,7 +586,7 @@
       "got": "I couldn't find this in the handbook.",
       "answerable": false,
       "system_found": false,
-      "confidence": -7.428,
+      "confidence": -11.198,
       "similarity": 0.0,
       "correct": false,
       "outcome": "TN"
@@ -597,7 +597,7 @@
       "got": "I couldn't find this in the handbook.",
       "answerable": false,
       "system_found": false,
-      "confidence": -11.013,
+      "confidence": -10.425,
       "similarity": 0.0,
       "correct": false,
       "outcome": "TN"
@@ -608,7 +608,7 @@
       "got": "I couldn't find this in the handbook.",
       "answerable": false,
       "system_found": false,
-      "confidence": -9.611,
+      "confidence": -11.275,
       "similarity": 0.0,
       "correct": false,
       "outcome": "TN"
@@ -619,7 +619,7 @@
       "got": "I couldn't find this in the handbook.",
       "answerable": false,
       "system_found": false,
-      "confidence": -8.36,
+      "confidence": -10.96,
       "similarity": 0.0,
       "correct": false,
       "outcome": "TN"
@@ -630,7 +630,7 @@
       "got": "I couldn't find this in the handbook.",
       "answerable": false,
       "system_found": false,
-      "confidence": -11.271,
+      "confidence": -11.156,
       "similarity": 0.0,
       "correct": false,
       "outcome": "TN"
@@ -641,7 +641,7 @@
       "got": "I couldn't find this in the handbook.",
       "answerable": false,
       "system_found": false,
-      "confidence": -5.655,
+      "confidence": -10.6,
       "similarity": 0.0,
       "correct": false,
       "outcome": "TN"
@@ -652,7 +652,7 @@
       "got": "I couldn't find this in the handbook.",
       "answerable": false,
       "system_found": false,
-      "confidence": -4.871,
+      "confidence": -10.908,
       "similarity": 0.0,
       "correct": false,
       "outcome": "TN"
@@ -663,7 +663,7 @@
       "got": "I couldn't find this in the handbook.",
       "answerable": false,
       "system_found": false,
-      "confidence": -10.017,
+      "confidence": -11.23,
       "similarity": 0.0,
       "correct": false,
       "outcome": "TN"
