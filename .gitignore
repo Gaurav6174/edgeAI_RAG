@@ -41,5 +41,8 @@ lerna-debug.log*
 
 # Generated data
 data/index/*
+!data/index/.gitkeep
 data/uploads/*
+!data/uploads/.gitkeep
 data/eval/*
+!data/eval/.gitkeep
