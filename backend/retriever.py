@@ -1,32 +1,25 @@
 import os
-import numpy as np
+
 import faiss
-from sentence_transformers import SentenceTransformer, CrossEncoder
+import numpy as np
 from dotenv import load_dotenv
+from sentence_transformers import CrossEncoder, SentenceTransformer
 
 load_dotenv()
 
-EMBED_MODEL =       os.getenv("EMBED_MODEL")
-TOP_K =             int(os.getenv("TOP_K", 10))
-RERANK_TOP_N =      int(os.getenv("RERANK_TOP_N", 3))
+EMBED_MODEL = os.getenv("EMBED_MODEL")
+TOP_K = int(os.getenv("TOP_K", 10))
+RERANK_TOP_N = int(os.getenv("RERANK_TOP_N", 3))
 
 # Load models at module level to avoid reloading on every call
 embed_model = SentenceTransformer(EMBED_MODEL)
 
 reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
-def dense_search(query: str, faiss_index, chunks: list[dict], top_k: int) -> list[tuple]:
-    """
-        Embeds the query and finds the most similar chunks
-        using FAISS (semantic/dense search).
-        Returns list of (chunk, score) tuples.
-    """
 
-
+def dense_search(    query: str, faiss_index, chunks: list[dict], top_k: int) -> list[tuple]:
     query_vec = embed_model.encode(
-        [query],
-        normalize_embeddings = True,
-        convert_to_numpy = True
+        [query], normalize_embeddings=True, convert_to_numpy=True
     )
 
     # FAISS returns distances and indices of top_k nearest neighbours
@@ -40,15 +33,15 @@ def dense_search(query: str, faiss_index, chunks: list[dict], top_k: int) -> lis
 
     return results
 
-def sparse_search(query: str, bm25_index, chunks: list[dict], top_k: int) -> list[tuple]:
-    """
-        Uses BM25 to find relevant chunks based on keyword matching.
-        Returns list of (chunk, score) tuples.
-    """
+
+
+
+
+def sparse_search(    query: str, bm25_index, chunks: list[dict], top_k: int) -> list[tuple]:
     tokenized_query = query.lower().split()
     scores = bm25_index.get_scores(tokenized_query)
 
-    #indices of top_k highest scores
+    # indices of top_k highest scores
     top_indices = np.argsort(scores)[::-1][:top_k]
 
     results = []
@@ -58,25 +51,25 @@ def sparse_search(query: str, bm25_index, chunks: list[dict], top_k: int) -> lis
 
     return results
 
-def hybrid_search(query: str, faiss_index, bm25_index, chunks: list[dict]) -> list[tuple]:
-    """
-        Combines dense and sparse results using Reciprocal Rank Fusion (RRF)
 
-    """
+
+
+
+def hybrid_search(    query: str, faiss_index, bm25_index, chunks: list[dict]) -> list[tuple]:
     dense_results = dense_search(query, faiss_index, chunks, TOP_K)
     sparse_results = sparse_search(query, bm25_index, chunks, TOP_K)
 
     # Build a map from chunk text → RRF score
     rrf_scores = {}
-    chunk_map = {}    #text → chunk dict (to retrieve later)
+    chunk_map = {}  # text → chunk dict (to retrieve later)
 
-    #for dense
+    # for dense
     for rank, (chunk, score) in enumerate(dense_results):
         key = chunk["text"]
         rrf_scores[key] = rrf_scores.get(key, 0) + 1 / (rank + 60)
         chunk_map[key] = chunk
-    
-    #for sparse
+
+    # for sparse
     for rank, (chunk, score) in enumerate(sparse_results):
         key = chunk["text"]
         rrf_scores[key] = rrf_scores.get(key, 0) + 1 / (rank + 60)
@@ -86,11 +79,9 @@ def hybrid_search(query: str, faiss_index, bm25_index, chunks: list[dict]) -> li
     sorted_keys = sorted(rrf_scores.keys(), key=lambda k: rrf_scores[k], reverse=True)
     return [(chunk_map[k], rrf_scores[k]) for k in sorted_keys[:TOP_K]]
 
+
 def rerank(query: str, candidates: list[tuple]) -> list[tuple]:
-    """
-        Reranks the top candidates using a Cross-Encoder for better relevance.
-        Returns list of (chunk, score) tuples sorted by relevance.
-    """
+
     if not candidates:
         return []
 
@@ -100,25 +91,20 @@ def rerank(query: str, candidates: list[tuple]) -> list[tuple]:
 
     # Attach new scores and sort
     reranked = sorted(
-        zip([c for c, _ in candidates], scores),
-        key=lambda x: x[1],
-        reverse=True
+        zip([c for c, _ in candidates], scores), key=lambda x: x[1], reverse=True
     )
     return reranked[:RERANK_TOP_N]
 
+
 def retrieve(query: str, faiss_index, bm25_index, chunks: list[dict]) -> list[dict]:
-    """
-        Main retrieval function that performs hybrid search and reranking.
-        Returns list of top relevant chunks with their metadata.
-    """
 
     hyrid_results = hybrid_search(query, faiss_index, bm25_index, chunks)
     reranked = rerank(query, hyrid_results)
 
     if not reranked:
         return [], 0.0
-    
+
     top_chunks = [chunk for chunk, _ in reranked]
-    confidence_score = float(reranked[0][1]) # highest relevance score from reranker
+    confidence_score = float(reranked[0][1])  # highest relevance score from reranker
 
     return top_chunks, confidence_score

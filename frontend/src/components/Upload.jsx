@@ -47,22 +47,22 @@ export default function Upload({ onUploadComplete }) {
 
   return (
     <div style={{
-      backgroundColor: '#111111',
-      border: '1px solid #1a1a1a',
+      backgroundColor: '#ffffff',
+      border: '1px solid #e0e0e0',
       borderRadius: '12px',
       padding: '24px',
     }}>
       <h3 style={{
         fontSize: '18px',
         fontWeight: 500,
-        color: '#ffffff',
+        color: '#000000',
         margin: '0 0 6px 0',
       }}>
         Upload Handbook
       </h3>
       <p style={{
         fontSize: '14px',
-        color: '#ffffff',
+        color: '#666666',
         margin: '0 0 20px 0',
       }}>
         Select a PDF to index for retrieval.
@@ -75,13 +75,13 @@ export default function Upload({ onUploadComplete }) {
         onDrop={handleDrop}
         style={{
           position: 'relative',
-          border: `1px dashed ${dragging ? '#ffffff' : '#333333'}`,
+          border: `1px dashed ${dragging ? '#000000' : '#cccccc'}`,
           borderRadius: '8px',
           padding: '32px 16px',
           textAlign: 'center',
           transition: 'border-color 0.15s',
           cursor: 'pointer',
-          backgroundColor: dragging ? '#1a1a1a' : 'transparent',
+          backgroundColor: dragging ? '#f0f0f0' : 'transparent',
         }}
       >
         <input
@@ -95,7 +95,7 @@ export default function Upload({ onUploadComplete }) {
         />
         <p style={{
           fontSize: '14px',
-          color: '#ffffff',
+          color: '#000000',
           margin: 0,
           pointerEvents: 'none',
         }}>
@@ -107,7 +107,7 @@ export default function Upload({ onUploadComplete }) {
       {chunksIndexed !== null && (
         <p style={{
           fontSize: '13px',
-          color: '#ffffff',
+          color: '#000000',
           margin: '10px 0 0 0',
         }}>
           ✓ Indexed {chunksIndexed} chunks
@@ -118,7 +118,7 @@ export default function Upload({ onUploadComplete }) {
       {error && (
         <p style={{
           fontSize: '13px',
-          color: '#ffffff',
+          color: '#000000',
           margin: '10px 0 0 0',
         }}>
           {error}
@@ -134,8 +134,8 @@ export default function Upload({ onUploadComplete }) {
           height: '40px',
           borderRadius: '999px',
           border: 'none',
-          backgroundColor: !file || uploading ? '#1a1a1a' : '#ffffff',
-          color: !file || uploading ? '#ffffff' : '#000000',
+          backgroundColor: !file || uploading ? '#f0f0f0' : '#000000',
+          color: !file || uploading ? '#999999' : '#ffffff',
           fontSize: '14px',
           fontWeight: 500,
           cursor: !file || uploading ? 'not-allowed' : 'pointer',

@@ -77,8 +77,8 @@ export default function Chat() {
       flexDirection: 'column',
       height: '600px',
       width: '100%',
-      backgroundColor: '#111111',
-      border: '1px solid #1a1a1a',
+      backgroundColor: '#ffffff',
+      border: '1px solid #e0e0e0',
       borderRadius: '12px',
       overflow: 'hidden',
     }}>
@@ -103,7 +103,7 @@ export default function Chat() {
               fontFamily: 'Georgia, serif',
               fontSize: '22px',
               fontWeight: 300,
-              color: '#ffffff',
+              color: '#000000',
               textAlign: 'center',
             }}>
               Ask anything about the handbook.
@@ -122,14 +122,14 @@ export default function Chat() {
               borderRadius: m.role === 'user'
                 ? '12px 12px 2px 12px'
                 : '12px 12px 12px 2px',
-              backgroundColor: m.role === 'user' ? '#1a1a1a' : '#000000',
-              border: m.role === 'assistant' ? '1px solid #1a1a1a' : 'none',
+              backgroundColor: m.role === 'user' ? '#f0f0f0' : '#fafafa',
+              border: m.role === 'assistant' ? '1px solid #e0e0e0' : 'none',
             }}>
               {/* Message text */}
               <p style={{
                 fontSize: '18px',
                 lineHeight: 1.6,
-                  color: m.role === 'user' ? '#ffffff' : '#ffffff',
+                  color: '#000000',
                 margin: 0,
               }}>
                 {m.content}
@@ -140,7 +140,7 @@ export default function Chat() {
                     display: 'inline-block',
                     width: '2px',
                     height: '14px',
-                    backgroundColor: '#666666',
+                    backgroundColor: '#000000',
                     marginLeft: '2px',
                     verticalAlign: 'middle',
                     animation: 'blink 1s step-end infinite',
@@ -171,8 +171,8 @@ export default function Chat() {
           display: 'flex',
           gap: '12px',
           padding: '16px 24px',
-          borderTop: '1px solid #1a1a1a',
-          backgroundColor: '#111111',
+          borderTop: '1px solid #e0e0e0',
+          backgroundColor: '#ffffff',
         }}
       >
         <input
@@ -186,9 +186,9 @@ export default function Chat() {
             height: '44px',
             padding: '0 16px',
             borderRadius: '8px',
-            border: '1px solid #333333',
-            backgroundColor: '#000000',
-            color: '#ffffff',
+            border: '1px solid #cccccc',
+            backgroundColor: '#f5f5f5',
+            color: '#000000',
             fontSize: '15px',
             outline: 'none',
           }}
@@ -201,8 +201,8 @@ export default function Chat() {
             padding: '0 20px',
             borderRadius: '999px',
             border: 'none',
-            backgroundColor: isLoading || !input.trim() ? '#1a1a1a' : '#ffffff',
-            color: isLoading || !input.trim() ? '#ffffff' : '#000000',
+            backgroundColor: isLoading || !input.trim() ? '#f0f0f0' : '#000000',
+            color: isLoading || !input.trim() ? '#999999' : '#ffffff',
             fontSize: '14px',
             fontWeight: 500,
             cursor: isLoading || !input.trim() ? 'not-allowed' : 'pointer',

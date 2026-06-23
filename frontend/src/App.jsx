@@ -20,17 +20,17 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#000000' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#ffffff' }}>
 
       {/* Navbar */}
       <nav style={{
         height: '60px',
-        borderBottom: '1px solid #2a2a2a',
+        borderBottom: '1px solid #e0e0e0',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '0 40px',
-        backgroundColor: '#000000',
+        backgroundColor: '#ffffff',
         position: 'sticky',
         top: 0,
         zIndex: 100,
@@ -39,7 +39,7 @@ export default function App() {
           fontFamily: 'Georgia, serif',
           fontSize: '20px',
           fontWeight: 400,
-          color: '#ffffff',
+          color: '#000000',
         }}>
           Campus Handbook Bot
         </span>
@@ -49,9 +49,9 @@ export default function App() {
           <span style={{
             width: '8px', height: '8px',
             borderRadius: '50%',
-            backgroundColor: indexLoaded ? '#ffffff' : '#333333',
+            backgroundColor: indexLoaded ? '#000000' : '#cccccc',
           }} />
-          <span style={{ fontSize: '13px', color: '#ffffff' }}>
+          <span style={{ fontSize: '13px', color: '#000000' }}>
             {indexLoaded ? 'Index loaded' : 'No index'}
           </span>
         </div>
@@ -61,13 +61,13 @@ export default function App() {
       <section style={{
         textAlign: 'center',
         padding: '80px 24px 60px',
-        borderBottom: '1px solid #1a1a1a',
+        borderBottom: '1px solid #e0e0e0',
       }}>
         <h1 style={{
           fontFamily: 'Georgia, serif',
           fontSize: 'clamp(36px, 6vw, 64px)',
           fontWeight: 300,
-          color: '#ffffff',
+          color: '#000000',
           lineHeight: 1.1,
           letterSpacing: '-1px',
           margin: '0 0 16px 0',
@@ -76,7 +76,7 @@ export default function App() {
         </h1>
         <p style={{
           fontSize: '16px',
-            color: '#ffffff',
+            color: '#000000',
           maxWidth: '480px',
           margin: '0 auto',
           lineHeight: 1.6,
@@ -105,10 +105,10 @@ export default function App() {
             <div style={{
               padding: '14px 16px',
               borderRadius: '10px',
-              border: '1px solid #ffffff',
-              backgroundColor: '#111111',
+              border: '1px solid #e0e0e0',
+              backgroundColor: '#f5f5f5',
               fontSize: '14px',
-              color: '#ffffff',
+              color: '#000000',
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
@@ -118,8 +118,8 @@ export default function App() {
                 fontWeight: 600,
                 letterSpacing: '0.06em',
                 textTransform: 'uppercase',
-                backgroundColor: '#1a1a1a',
-                color: '#ffffff',
+                backgroundColor: '#e0e0e0',
+                color: '#000000',
                 padding: '3px 10px',
                 borderRadius: '999px',
               }}>
@@ -136,11 +136,11 @@ export default function App() {
 
       {/* Footer */}
       <footer style={{
-        borderTop: '1px solid #1a1a1a',
+        borderTop: '1px solid #e0e0e0',
         padding: '24px 40px',
         textAlign: 'center',
       }}>
-        <p style={{ fontSize: '13px', color: '#ffffff', margin: 0 }}>
+        <p style={{ fontSize: '13px', color: '#000000', margin: 0 }}>
           Campus Handbook Bot · On-Device RAG · NVIDIA Jetson Orin Nano
         </p>
       </footer>

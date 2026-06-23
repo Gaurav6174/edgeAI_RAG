@@ -18,15 +18,11 @@ def build_prompt(question: str, chunks: list[dict]) -> str:
 
     context = "\n\n".join(context_blocks)
 
-    prompt = f"""You are a friendly and knowledgeable campus assistant. \
-    Students come to you with questions about campus life, rules, fees, and procedures. \
-    You give clear, helpful answers in a warm and approachable tone — like a senior student \
-    who knows the handbook inside out.
-
-    Use ONLY the information in the sources below to answer. \
-    If the answer isn't there, say so honestly. \
-    Always mention which source your answer comes from, naturally worked into your response \
-    (e.g. "According to the handbook..." or "As mentioned on page 12...").
+    prompt = f"""You are a precise campus handbook assistant.
+    Answer the question in 1-3 sentences using ONLY the context below.
+    Start your answer directly — no greetings, no preamble.
+    Mention the source naturally at the end (e.g. "— Source 1, page 4").
+    If the answer is not in the context, say only: "Not found in the handbook."
 
     Sources:
     {context}
@@ -38,9 +34,6 @@ def build_prompt(question: str, chunks: list[dict]) -> str:
     return prompt
 
 async def query_ollama_stream(question: str, chunks: list[dict]):
-    """
-        Sends the prompt to the Ollama LLM and yields the response as a stream.
-    """
     prompt = build_prompt(question, chunks)
 
     payload = {
@@ -48,7 +41,7 @@ async def query_ollama_stream(question: str, chunks: list[dict]):
         "prompt": prompt,
         "stream": True,  #enable token streaming
         "options": {
-            "num_predict": 512,
+            "num_predict": 200,
             "temperature": 0.4,
             "top_p": 0.9,
             "top_k": 40,
