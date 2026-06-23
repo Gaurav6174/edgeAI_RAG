@@ -13,7 +13,7 @@ def build_prompt(question: str, chunks: list[dict]) -> str:
     for i, chunk in enumerate(chunks):
         context_blocks.append(
             f"[Source {i+1} — {chunk['source']}, page {chunk.get('page', '?')}]\n"
-            # f"{chunk['text']}"
+            
         )
 
     context = "\n\n".join(context_blocks)

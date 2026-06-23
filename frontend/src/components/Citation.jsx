@@ -5,14 +5,14 @@ export default function Citation({ citations }) {
     <div style={{
       marginTop: '16px',
       paddingTop: '12px',
-      borderTop: '1px solid #1c1917',
+      borderTop: '1px solid #1a1a1a',
     }}>
       <p style={{
         fontSize: '11px',
         fontWeight: 600,
         letterSpacing: '0.08em',
         textTransform: 'uppercase',
-        color: '#57534e',
+              color: '#ffffff',
         margin: '0 0 8px 0',
       }}>
         Sources
@@ -23,12 +23,12 @@ export default function Citation({ citations }) {
           <div key={i} style={{
             padding: '10px 12px',
             borderRadius: '8px',
-            border: '1px solid #292524',
-            backgroundColor: '#0c0a09',
+            border: '1px solid #1a1a1a',
+            backgroundColor: '#000000',
           }}>
             <p style={{
               fontSize: '13px',
-              color: '#a8a29e',
+              color: '#ffffff',
               fontStyle: 'italic',
               margin: '0 0 4px 0',
               lineHeight: 1.5,
@@ -37,7 +37,7 @@ export default function Citation({ citations }) {
             </p>
             <span style={{
               fontSize: '11px',
-              color: '#57534e',
+        color: '#ffffff',
               fontStyle: 'normal',
             }}>
               — {c.source}{c.page ? ` (p. ${c.page})` : ''}

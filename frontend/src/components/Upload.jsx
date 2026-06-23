@@ -47,8 +47,8 @@ export default function Upload({ onUploadComplete }) {
 
   return (
     <div style={{
-      backgroundColor: '#1c1917',
-      border: '1px solid #292524',
+      backgroundColor: '#111111',
+      border: '1px solid #1a1a1a',
       borderRadius: '12px',
       padding: '24px',
     }}>
@@ -62,7 +62,7 @@ export default function Upload({ onUploadComplete }) {
       </h3>
       <p style={{
         fontSize: '14px',
-        color: '#57534e',
+        color: '#ffffff',
         margin: '0 0 20px 0',
       }}>
         Select a PDF to index for retrieval.
@@ -75,13 +75,13 @@ export default function Upload({ onUploadComplete }) {
         onDrop={handleDrop}
         style={{
           position: 'relative',
-          border: `1px dashed ${dragging ? '#ffffff' : '#44403c'}`,
+          border: `1px dashed ${dragging ? '#ffffff' : '#333333'}`,
           borderRadius: '8px',
           padding: '32px 16px',
           textAlign: 'center',
           transition: 'border-color 0.15s',
           cursor: 'pointer',
-          backgroundColor: dragging ? '#292524' : 'transparent',
+          backgroundColor: dragging ? '#1a1a1a' : 'transparent',
         }}
       >
         <input
@@ -95,11 +95,11 @@ export default function Upload({ onUploadComplete }) {
         />
         <p style={{
           fontSize: '14px',
-          color: file ? '#ffffff' : '#57534e',
+          color: '#ffffff',
           margin: 0,
           pointerEvents: 'none',
         }}>
-          {file ? `📄 ${file.name}` : 'Click or drag a PDF here'}
+          {file ? `${file.name}` : 'Click or drag a PDF here'}
         </p>
       </div>
 
@@ -107,7 +107,7 @@ export default function Upload({ onUploadComplete }) {
       {chunksIndexed !== null && (
         <p style={{
           fontSize: '13px',
-          color: '#22c55e',
+          color: '#ffffff',
           margin: '10px 0 0 0',
         }}>
           ✓ Indexed {chunksIndexed} chunks
@@ -118,7 +118,7 @@ export default function Upload({ onUploadComplete }) {
       {error && (
         <p style={{
           fontSize: '13px',
-          color: '#ef4444',
+          color: '#ffffff',
           margin: '10px 0 0 0',
         }}>
           {error}
@@ -134,8 +134,8 @@ export default function Upload({ onUploadComplete }) {
           height: '40px',
           borderRadius: '999px',
           border: 'none',
-          backgroundColor: !file || uploading ? '#292524' : '#ffffff',
-          color: !file || uploading ? '#57534e' : '#0c0a09',
+          backgroundColor: !file || uploading ? '#1a1a1a' : '#ffffff',
+          color: !file || uploading ? '#ffffff' : '#000000',
           fontSize: '14px',
           fontWeight: 500,
           cursor: !file || uploading ? 'not-allowed' : 'pointer',

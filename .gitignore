@@ -40,5 +40,9 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 # Generated data
-data/index/
-data/uploads/
+data/index/*
+!data/index/.gitkeep
+data/uploads/*
+!data/uploads/.gitkeep
+data/eval/*
+!data/eval/.gitkeep
