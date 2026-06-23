@@ -2,7 +2,8 @@ import os
 import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 from models import QueryRequest, QueryResponse, IngestResponse, Citation
@@ -115,3 +116,16 @@ async def health():
         "index_loaded": faiss_index is not None,
         "chunk_count": len(chunks) if chunks else 0
     }
+
+# Serve built frontend from public/dist
+FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "public", "dist")
+
+if os.path.isdir(FRONTEND_DIR):
+    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIR, "assets")), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        file_path = os.path.join(FRONTEND_DIR, full_path.lstrip("/"))
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
