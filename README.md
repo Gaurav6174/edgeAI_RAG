@@ -66,23 +66,30 @@ campus-handbook-bot/
 │   ├── llm.py            — Ollama streaming integration
 │   ├── confidence.py     — similarity threshold gate
 │   ├── models.py         — Pydantic request/response schemas
+│   ├── evaluate.py       — RAG evaluation against ground-truth CSV
 │   ├── public/dist/      — built frontend (served by FastAPI)
 │   ├── requirements.txt
 │   └── .env
 ├── frontend/
+│   ├── public/           — static assets (icons, favicon)
 │   ├── src/
+│   │   ├── main.jsx
 │   │   ├── App.jsx
 │   │   ├── api.js        — all fetch calls to FastAPI (single source of truth)
+│   │   ├── index.css
 │   │   └── components/
 │   │       ├── Upload.jsx      — PDF drag-and-drop + ingest trigger
 │   │       ├── Chat.jsx        — streaming chat interface
 │   │       ├── Citation.jsx    — cited source display
 │   │       └── Confidence.jsx  — score badge + "not found" state
+│   ├── index.html
 │   ├── package.json
-│   └── vite.config.js
+│   ├── vite.config.js
+│   └── eslint.config.js
 ├── data/
 │   ├── uploads/          — ingested PDFs
-│   └── index/            — persisted FAISS + BM25 index (copy to Jetson)
+│   ├── index/            — persisted FAISS + BM25 index (copy to Jetson)
+│   └── eval/             — evaluation dataset + eval_report.json
 └── README.md
 ```
 
