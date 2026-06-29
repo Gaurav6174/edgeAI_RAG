@@ -12,7 +12,7 @@ load_dotenv()
 
 EMBED_MODEL = os.getenv("EMBED_MODEL")
 INDEX_DIR   = os.getenv("INDEX_DIR")
-CHUNK_SIZE   = 300
+CHUNK_SIZE   = 150      #300
 CHUNK_OVERLAP = 20
 
 embed_model = SentenceTransformer(EMBED_MODEL)

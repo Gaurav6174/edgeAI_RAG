@@ -66,6 +66,7 @@ campus-handbook-bot/
 │   ├── llm.py            — Ollama streaming integration
 │   ├── confidence.py     — similarity threshold gate
 │   ├── models.py         — Pydantic request/response schemas
+│   ├── public/dist/      — built frontend (served by FastAPI)
 │   ├── requirements.txt
 │   └── .env
 ├── frontend/
@@ -139,7 +140,7 @@ RERANK_TOP_N=3
 CONFIDENCE_THRESHOLD=0.35
 ```
 
-Start the backend:
+Start the backend (serves both the API and the frontend):
 
 ```bash
 cd backend
@@ -148,14 +149,18 @@ uvicorn main:app --port 8000
 
 > Use `--reload` only when actively editing backend code. Without it, the in-memory index persists correctly between requests.
 
-Verify at `http://localhost:8000/health`:
+Open `http://localhost:8000` in your browser — the built frontend is served directly by FastAPI.
+
+Verify the API at `http://localhost:8000/health`:
 ```json
 {"status": "ok", "index_loaded": false, "chunks_count": 0}
 ```
 
 Interactive API docs at `http://localhost:8000/docs`.
 
-### 3. Frontend setup
+### 3. Frontend development (optional)
+
+If you're iterating on the UI, run the Vite dev server for hot-reload:
 
 ```bash
 cd frontend
@@ -167,9 +172,19 @@ Open `http://localhost:5173`.
 
 > The Vite proxy forwards all `/ingest`, `/query`, `/citations`, and `/health` calls to `localhost:8000` automatically — no CORS issues.
 
+When you're done, build and commit the changes:
+
+```bash
+cd frontend
+npm run build
+# output goes to dist/ — do NOT move it manually
+```
+
+> The built frontend is served from `backend/public/dist/`. The build output is already copied there (symlinked or pre-deployed), so simply run `npm run build` from the frontend directory, then restart the backend.
+
 ### 4. Test the full pipeline
 
-1. Open `http://localhost:5173`
+1. Open `http://localhost:8000`
 2. Upload a PDF using the upload card (drag and drop supported)
 3. Wait for the "Indexed N chunks" confirmation
 4. Type a question in the chat
@@ -200,9 +215,8 @@ scp -r data/index/ username@<jetson-ip>:/home/username/campus-handbook-bot/data/
 # copy the backend
 scp -r backend/ username@<jetson-ip>:/home/username/campus-handbook-bot/
 
-# copy the frontend build
-cd frontend && npm run build
-scp -r dist/ username@<jetson-ip>:/home/username/campus-handbook-bot/frontend-dist/
+# build and copy the frontend (backend serves it from public/dist/)
+cd frontend && npm run build && cp -r dist/ ../backend/public/
 
 # copy any PDF you want available on the board
 scp data/uploads/handbook.pdf username@<jetson-ip>:/home/username/campus-handbook-bot/data/uploads/
@@ -240,15 +254,11 @@ tegrastats
 
 Look for GPU utilization going up when a query is processed. If it stays at 0%, Ollama isn't using the GPU — check JetPack version (`jetpack --version`) and ensure CUDA libraries are linked correctly.
 
-### Serve the frontend
+### Access the frontend
 
-```bash
-# on the Jetson, serve the built frontend
-cd frontend-dist
-npx serve -s . -l 3000
-```
+The backend serves the built frontend from `public/dist/`, so the UI is available at the same address as the API:
 
-Access the UI from any browser on the same network at `http://<jetson-ip>:3000`.
+Access the UI from any browser on the same network at `http://<jetson-ip>:8000`.
 
 ---
 
@@ -364,6 +374,67 @@ Every query goes through three stages before reaching the LLM:
 3. **Confidence gate** — if the best reranker score is below `CONFIDENCE_THRESHOLD` (0.35), the system responds "not found" without calling the LLM
 
 This prevents the 1B model from hallucinating answers to questions the document doesn't cover — one of the most common failure modes in small model RAG systems.
+
+---
+
+## Evaluating response accuracy
+
+The repo includes an evaluation script (`backend/evaluate.py`) that scores your RAG system against a ground-truth dataset using semantic similarity. Use it to measure precision, recall, F1, and accuracy.
+
+### Step-by-step
+
+**1. Generate a Q&A dataset**
+
+Upload your PDF to an advanced LLM (ChatGPT, Claude, etc.) with this prompt:
+
+```
+You are creating an evaluation dataset for a RAG system. From this handbook PDF
+generate 50 factual question-answer pairs.
+
+Rules:
+
+  - Questions must be clearly answerable from the document
+  - Answers must be concise and directly from the text
+  - Include the page number where the answer is found
+  - Return ONLY a CSV with these exact columns:
+    question,answer,answerable,source_page
+  - Set answerable to True for all generated pairs
+  - No explanations, no markdown, just the CSV rows
+
+Generate the questions now.
+```
+
+**2. Place the CSV**
+
+Copy the generated CSV into the project:
+
+```bash
+mkdir -p data/eval
+# copy your file as questions.csv
+cp /path/to/your/questions.csv data/eval/questions.csv
+```
+
+**3. Run the backend**
+
+```bash
+cd backend
+uvicorn main:app --port 8000
+```
+
+**4. Run the evaluation**
+
+In another terminal:
+
+```bash
+cd backend
+python evaluate.py
+```
+
+This produces `data/eval/eval_report.json` with per-question results and aggregate metrics (accuracy, precision, recall, F1).
+
+### Tuning
+
+Adjust the system prompt in `backend/llm.py` and LLM hyperparameters (temperature, top_p, etc.) in the Ollama call to improve scores, then re-run the evaluation.
 
 ---
 

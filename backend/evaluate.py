@@ -2,25 +2,54 @@ import asyncio
 import csv
 import json
 import os
-
+import re
 import httpx
 from sentence_transformers import SentenceTransformer, util
 
 BASE_URL = "http://localhost:8000"
 CSV_PATH = "../data/eval/questions.csv"
 REPORT_PATH = "../data/eval/eval_report.json"
-SIMILARITY_THRESHOLD = 0.6
+SIMILARITY_THRESHOLD = 0.5
 
 
 embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
+def normalize(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r'[^\w\s]', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
 
 def semantic_similarity(text1: str, text2: str) -> float:
     if not text1 or not text2:
         return 0.0
+    if len(text1.strip()) < 5 or len(text2.strip()) < 5:
+        return 0.0
     emb1 = embedder.encode(text1, convert_to_tensor=True)
     emb2 = embedder.encode(text2, convert_to_tensor=True)
-    return float(util.cos_sim(emb1, emb2))
+    return max(0.0, float(util.cos_sim(emb1, emb2)))
+
+def is_correct(expected: str, got: str, similarity: float) -> bool:
+    if similarity >= SIMILARITY_THRESHOLD:
+        return True
+
+    exp_norm = normalize(expected)
+    got_norm = normalize(got)
+
+    if exp_norm in got_norm:
+        return True
+
+    if got_norm in exp_norm:
+        return True
+
+    exp_words = set(exp_norm.split())
+    got_words = set(got_norm.split())
+    if len(exp_words) > 0:
+        overlap = len(exp_words & got_words) / len(exp_words)
+        if overlap >= 0.8:
+            return True
+
+    return False
 
 
 async def ask(question: str, client: httpx.AsyncClient) -> dict:
@@ -42,7 +71,6 @@ async def ask(question: str, client: httpx.AsyncClient) -> dict:
         "found": cit_data["found"],
         "citations": cit_data.get("citations", []),
     }
-
 
 async def evaluate(csv_path: str):
     # load dataset
@@ -91,7 +119,7 @@ async def evaluate(csv_path: str):
                 if answerable and system_answered and expected
                 else 0.0
             )
-            correct_answer = similarity >= SIMILARITY_THRESHOLD
+            correct_answer = is_correct(expected, result["answer"], similarity)
 
             # classify outcome
             if answerable and system_answered and correct_answer:

@@ -13,23 +13,25 @@ def build_prompt(question: str, chunks: list[dict]) -> str:
     for i, chunk in enumerate(chunks):
         context_blocks.append(
             f"[Source {i+1} — {chunk['source']}, page {chunk.get('page', '?')}]\n"
-            
+            f"{chunk['text']}"
         )
-
     context = "\n\n".join(context_blocks)
 
-    prompt = f"""You are a precise campus handbook assistant.
-    Answer the question in 1-3 sentences using ONLY the context below.
-    Start your answer directly — no greetings, no preamble.
-    Mention the source naturally at the end (e.g. "— Source 1, page 4").
-    If the answer is not in the context, say only: "Not found in the handbook."
+    prompt = f"""You are a precise document assistant. Answer questions using ONLY the context below.
 
-    Sources:
-    {context}
+Rules:
+- Answer in one sentence or less — match the brevity of the question
+- If the answer is a number, date, name, or short phrase, give ONLY that value
+- If listing multiple items, separate them with commas or "and" — never use bullet points or newlines
+- No greetings, no preamble, no "According to...", no "Based on..."
+- Do not repeat the question
+- If the answer is not in the context, respond with exactly: Not found.
 
-    Student's question: {question}
+Context:
+{context}
 
-    Your answer:"""
+Question: {question}
+Answer:"""
 
     return prompt
 
@@ -41,11 +43,12 @@ async def query_ollama_stream(question: str, chunks: list[dict]):
         "prompt": prompt,
         "stream": True,  #enable token streaming
         "options": {
-            "num_predict": 200,
-            "temperature": 0.4,
+            "temperature": 0.1,      # back to low — factual short answers need determinism
             "top_p": 0.9,
             "top_k": 40,
-            "repeat_penalty": 1.1
+            "repeat_penalty": 1.1,
+            "num_predict": 100,      # most answers are under 30 tokens, 100 is safe ceiling
+            "stop": ["\n\n", "Question:", "Context:"]  # stop generating at double newline or if it starts looping
         }
     }
 
