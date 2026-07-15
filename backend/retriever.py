@@ -23,6 +23,7 @@ def dense_search(    query: str, faiss_index, chunks: list[dict], top_k: int) ->
         normalize_embeddings=True,
         convert_to_numpy=True
     )
+    
     import numpy as np
     query_vec = np.array(query_vec, dtype=np.float32)
 
