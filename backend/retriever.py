@@ -19,8 +19,12 @@ reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
 def dense_search(    query: str, faiss_index, chunks: list[dict], top_k: int) -> list[tuple]:
     query_vec = embed_model.encode(
-        [query], normalize_embeddings=True, convert_to_numpy=True
+        [query],
+        normalize_embeddings=True,
+        convert_to_numpy=True
     )
+    import numpy as np
+    query_vec = np.array(query_vec, dtype=np.float32)
 
     # FAISS returns distances and indices of top_k nearest neighbours
     scores, indices = faiss_index.search(query_vec, top_k)
