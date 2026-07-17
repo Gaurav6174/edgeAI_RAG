@@ -16,7 +16,6 @@ embed_model = SentenceTransformer(EMBED_MODEL)
 
 reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
-
 def dense_search(    query: str, faiss_index, chunks: list[dict], top_k: int) -> list[tuple]:
     query_vec = embed_model.encode(
         [query],
@@ -38,10 +37,6 @@ def dense_search(    query: str, faiss_index, chunks: list[dict], top_k: int) ->
 
     return results
 
-
-
-
-
 def sparse_search(    query: str, bm25_index, chunks: list[dict], top_k: int) -> list[tuple]:
     tokenized_query = query.lower().split()
     scores = bm25_index.get_scores(tokenized_query)
@@ -55,10 +50,6 @@ def sparse_search(    query: str, bm25_index, chunks: list[dict], top_k: int) ->
             results.append((chunks[idx], float(scores[idx])))
 
     return results
-
-
-
-
 
 def hybrid_search(    query: str, faiss_index, bm25_index, chunks: list[dict]) -> list[tuple]:
     dense_results = dense_search(query, faiss_index, chunks, TOP_K)
