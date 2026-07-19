@@ -94,8 +94,30 @@ echo "== Step 5: Setup Python =="
 # an NVIDIA-built torch (seen in the real log as torch==2.5.0a0+...nv24.08)
 # with CUDA/Tegra support. A plain venv would lose that and fall back to a
 # generic CPU-only PyPI wheel.
-python3 -m venv .venv --system-site-packages
-source .venv/bin/activate
+# Real failure mode hit on this platform: "ensurepip is not available" because
+# python3.10-venv isn't installed and the base image is partially read-only.
+# Try the normal path first, fall back to a pip-less venv + manual bootstrap
+# rather than aborting the whole run.
+rm -rf .venv
+if ! python3 -m venv .venv --system-site-packages 2>/tmp/venv_err; then
+    echo "Normal venv creation failed:"; cat /tmp/venv_err
+    echo "Trying: apt install python3.10-venv ..."
+    (sudo apt-get install -y python3.10-venv || apt-get install -y python3.10-venv) 2>/dev/null || true
+    rm -rf .venv
+    if ! python3 -m venv .venv --system-site-packages 2>/tmp/venv_err2; then
+        echo "Still failing, falling back to --without-pip + get-pip.py bootstrap"
+        cat /tmp/venv_err2
+        rm -rf .venv
+        python3 -m venv .venv --system-site-packages --without-pip
+        source .venv/bin/activate
+        curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
+        python3 /tmp/get-pip.py --no-warn-script-location
+    else
+        source .venv/bin/activate
+    fi
+else
+    source .venv/bin/activate
+fi
 
 echo "== Step 6: Install packages (single source of truth: requirements.txt) =="
 pip install --no-user -r backend/requirements.txt
