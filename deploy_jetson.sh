@@ -50,13 +50,21 @@ echo "== Step 0.5: Disk hygiene =="
 # device" killed a whole session in the past. Clean proactively, don't wait
 # for the error.
 pip cache purge >/dev/null 2>&1 || true
+rm -rf "$HOME/.cache/pip" 2>/dev/null || true
 sudo apt-get clean >/dev/null 2>&1 || apt-get clean >/dev/null 2>&1 || true
-# Known stray-package cleanup — remove any leftover ~/.local copies of packages
-# this project uses, so PYTHONNOUSERSITE isn't the only thing preventing them
-# from causing confusion later (e.g. if some other tool re-enables user site).
-for pkg in numpy scipy sentence_transformers transformers sklearn faiss; do
-    rm -rf "$HOME"/.local/lib/python3.*/site-packages/"$pkg"* 2>/dev/null || true
-done
+# Confirmed on real hardware: ~/.local accumulates to multiple GB (torch,
+# numpy, sentence-transformers, transformers, sklearn from old `pip install
+# --user` runs across earlier sessions) and has zero legitimate use in this
+# workflow — it's the exact source of the .local-vs-.venv import shadowing
+# bug documented in the deployment log. Wholesale removal, not partial.
+if [ -d "$HOME/.local" ]; then
+    FREED=$(du -sh "$HOME/.local" 2>/dev/null | cut -f1)
+    echo "Removing ~/.local ($FREED) — leftover user-site packages from earlier sessions"
+    rm -rf "$HOME/.local"
+fi
+# NOTE: intentionally NOT touching ~/.ollama — pulled models cache there and
+# storage has been observed to persist across session bookings, so it may
+# already contain llama3.2:1b from a previous session.
 AVAIL_KB=$(df --output=avail -k / | tail -1)
 echo "Free space on /: $((AVAIL_KB / 1024)) MB"
 if [ "$AVAIL_KB" -lt 1500000 ]; then
@@ -75,7 +83,11 @@ ollama serve > /tmp/ollama.log 2>&1 &
 wait_for "http://localhost:11434" "Ollama server" 30
 
 echo "== Step 4: Pull model =="
-ollama pull llama3.2:1b
+if ollama list 2>/dev/null | grep -q 'llama3.2:1b'; then
+    echo "llama3.2:1b already cached — skipping download"
+else
+    ollama pull llama3.2:1b
+fi
 
 echo "== Step 5: Setup Python =="
 # --system-site-packages is deliberate and confirmed necessary: JetPack ships
