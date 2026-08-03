@@ -41,14 +41,15 @@ async def query_ollama_stream(question: str, chunks: list[dict]):
     payload = {
         "model": OLLAMA_MODEL,
         "prompt": prompt,
-        "stream": True,  #enable token streaming
+        "stream": True,
         "options": {
-            "temperature": 0.1,      # back to low — factual short answers need determinism
-            "top_p": 0.9,
+            "num_ctx": 1024,        # keep context small — platform recommendation
+            "num_gpu": 1,           # explicitly use GPU
+            "use_mmap": True,       # memory-mapped loading
+            "temperature": 0.4,
             "top_k": 40,
             "repeat_penalty": 1.1,
-            "num_predict": 100,      # most answers are under 30 tokens, 100 is safe ceiling
-            "stop": ["\n\n", "Question:", "Context:"]  # stop generating at double newline or if it starts looping
+            "num_predict": 200,
         }
     }
 
@@ -65,7 +66,7 @@ async def query_ollama_stream(question: str, chunks: list[dict]):
                         token = data.get("response", "")
                         if token:
                             yield token
-                        if data.get("done"):     # Ollama signals end of stream
+                        if data.get("done"):
                             break
                     except json.JSONDecodeError:
                         continue
@@ -78,6 +79,3 @@ async def query_ollama(question: str, chunks: list[dict]) -> str:
     async for token in query_ollama_stream(question, chunks):
         full_response += token
     return full_response.strip()
-
-
-
