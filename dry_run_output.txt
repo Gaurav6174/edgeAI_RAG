@@ -1,0 +1,22 @@
+=== DRY RUN: Campus Handbook Bot on Jetson Orin ===
+Date: Wed Aug  5 17:39:19 IST 2026
+
+--- Health Check ---
+{"status":"ok","index_loaded":true,"chunk_count":160}
+
+--- Query 1: What is the Code of Student Conduct? ---
+Page 9 of 86 Part 1: Code of Student Conduct The Code of Student Conduct outlines behavioral standards developed by the University community for students and student organizations.
+
+--- Query 2: What are the student conduct procedures? ---
+The student conduct procedures outlined in the text are:
+
+1. **Complaint Process**: Students can file a complaint with the Dean of Students or Student Resolution Center if they believe that their rights have been violated.
+2. **Grievance Investigation**: The Dean will investigate the complaint and gather information to determine whether there has been a violation of University policy or federal, state, or local law.
+3. **Resolution**: If the investigation finds no evidence of wrongdoing, the student may be offered an opportunity to resolve the issue informally with the responding party.
+4. **Formal Complaint**: If the issue cannot be resolved informally, students can file a formal complaint by completing the grievance form located at www.deanofstudents.ttu.edu.
+5. **Disciplinary Action**: The Dean will review the complaint and take disciplinary action if necessary.
+
+These procedures are designed to provide a fair and non-adversarial process for resolving complaints involving faculty or staff members, while also allowing students to address their
+
+--- Query 3: What is the academic integrity policy? ---
+Texas Tech University Quality Enhancement Plan, Academic Integrity Task Force, 2010
