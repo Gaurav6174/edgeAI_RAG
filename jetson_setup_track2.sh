@@ -47,17 +47,33 @@ pip install requests
 
 echo
 echo "=== Step 6: Sanity-check the Ollama REST API on the board ==="
-curl -s http://172.17.0.1:11434/api/generate -d '{
-  "model": "llama3.2:1b",
-  "prompt": "Reply with the single word: OK",
-  "stream": false,
-  "options": {
-    "num_ctx": 1024,
-    "num_gpu": 1,
-    "use_mmap": true
-  }
-}' | python3 -c "import sys, json; print(json.load(sys.stdin).get('response', '<no response field>'))" \
-  || echo "Could not reach http://172.17.0.1:11434 - check you're on the board's Web Terminal, not your laptop."
+echo "Note: the first generate call after the board sits idle can fail once with"
+echo "'llama runner process has terminated' while the GPU context cold-starts -"
+echo "this is normal here, so we retry a few times before giving up."
+API_OK=0
+for i in 1 2 3 4 5; do
+    RESP=$(curl -s http://172.17.0.1:11434/api/generate -d '{
+      "model": "llama3.2:1b",
+      "prompt": "Reply with the single word: OK",
+      "stream": false,
+      "options": {
+        "num_ctx": 1024,
+        "num_gpu": 1,
+        "use_mmap": true
+      }
+    }')
+    MODEL_REPLY=$(echo "$RESP" | python3 -c "import sys, json; print(json.load(sys.stdin).get('response',''))" 2>/dev/null)
+    if [ -n "$MODEL_REPLY" ]; then
+        echo "API responded on attempt $i: $MODEL_REPLY"
+        API_OK=1
+        break
+    fi
+    echo "attempt $i failed (runner cold-start), retrying..."
+    sleep 2
+done
+if [ "$API_OK" -ne 1 ]; then
+    echo "API still not responding after 5 attempts - check the board with jetson_ollama_diagnose.sh"
+fi
 
 echo
 echo "=== Setup complete ==="

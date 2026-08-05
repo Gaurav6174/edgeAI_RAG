@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 import json
 from dotenv import load_dotenv
@@ -55,15 +56,24 @@ async def query_ollama_stream(question: str, chunks: list[dict]):
             "num_predict":    200,
         }
     }
-    try:
-        response = requests.post(API_URL, json=payload, timeout=120)
-        if response.status_code == 200:
-            answer = response.json().get("response", "").strip()
-            yield answer
-        else:
-            yield f"Error {response.status_code}: {response.text}"
-    except requests.exceptions.RequestException as e:
-        yield f"Connection Error: {e}"
+    # The board's Ollama runner occasionally dies on a cold GPU context init
+    # ("llama runner process has terminated") and recovers on retry, so don't
+    # surface a single 500 as a hard failure.
+    max_attempts = 3
+    last_error = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            response = requests.post(API_URL, json=payload, timeout=120)
+            if response.status_code == 200:
+                answer = response.json().get("response", "").strip()
+                yield answer
+                return
+            last_error = f"Error {response.status_code}: {response.text}"
+        except requests.exceptions.RequestException as e:
+            last_error = f"Connection Error: {e}"
+        if attempt < max_attempts:
+            time.sleep(2)
+    yield last_error
 
 
 async def query_ollama(question: str, chunks: list[dict]) -> str:
