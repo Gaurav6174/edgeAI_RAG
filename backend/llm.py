@@ -1,12 +1,14 @@
 import os
-import httpx
+import requests
 import json
 from dotenv import load_dotenv
 
 load_dotenv()
 
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_HOST  = os.getenv("OLLAMA_HOST", "http://172.17.0.1:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+API_URL      = f"{OLLAMA_HOST}/api/generate"
+
 
 def build_prompt(question: str, chunks: list[dict]) -> str:
     context_blocks = []
@@ -16,13 +18,12 @@ def build_prompt(question: str, chunks: list[dict]) -> str:
             f"{chunk['text']}"
         )
     context = "\n\n".join(context_blocks)
-
-    prompt = f"""You are a precise document assistant. Answer questions using ONLY the context below.
+    return f"""You are a precise document assistant. Answer questions using ONLY the context below.
 
 Rules:
 - Answer in one sentence or less — match the brevity of the question
 - If the answer is a number, date, name, or short phrase, give ONLY that value
-- If listing multiple items, separate them with commas or "and" — never use bullet points or newlines
+- If listing multiple items, separate them with commas or "and" — never bullet points or newlines
 - No greetings, no preamble, no "According to...", no "Based on..."
 - Do not repeat the question
 - If the answer is not in the context, respond with exactly: Not found.
@@ -33,49 +34,40 @@ Context:
 Question: {question}
 Answer:"""
 
-    return prompt
 
 async def query_ollama_stream(question: str, chunks: list[dict]):
-    prompt = build_prompt(question, chunks)
-
+    """
+    Uses requests (sync) wrapped to yield tokens.
+    Their API works without streaming — we get full response and yield it once.
+    """
+    prompt  = build_prompt(question, chunks)
     payload = {
-        "model": OLLAMA_MODEL,
+        "model":  OLLAMA_MODEL,
         "prompt": prompt,
-        "stream": True,
+        "stream": False,
         "options": {
-            "num_ctx": 1024,        # keep context small — platform recommendation
-            "num_gpu": 1,           # explicitly use GPU
-            "use_mmap": True,       # memory-mapped loading
-            "temperature": 0.4,
-            "top_k": 40,
+            "num_ctx":  1024,
+            "num_gpu":  1,
+            "use_mmap": True,
+            "temperature":    0.1,
+            "top_k":          40,
             "repeat_penalty": 1.1,
-            "num_predict": 200,
+            "num_predict":    200,
         }
     }
+    try:
+        response = requests.post(API_URL, json=payload, timeout=120)
+        if response.status_code == 200:
+            answer = response.json().get("response", "").strip()
+            yield answer
+        else:
+            yield f"Error {response.status_code}: {response.text}"
+    except requests.exceptions.RequestException as e:
+        yield f"Connection Error: {e}"
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        async with client.stream(
-            "POST",
-            f"{OLLAMA_HOST}/api/generate",
-            json=payload
-        ) as response:
-            async for line in response.aiter_lines():
-                if line.strip():
-                    try:
-                        data = json.loads(line)
-                        token = data.get("response", "")
-                        if token:
-                            yield token
-                        if data.get("done"):
-                            break
-                    except json.JSONDecodeError:
-                        continue
 
 async def query_ollama(question: str, chunks: list[dict]) -> str:
-    """
-        Sends the prompt to the Ollama LLM 
-    """
-    full_response = ""
+    full = ""
     async for token in query_ollama_stream(question, chunks):
-        full_response += token
-    return full_response.strip()
+        full += token
+    return full.strip()
