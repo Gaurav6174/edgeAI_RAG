@@ -1,69 +1,70 @@
 #!/usr/bin/env bash
-# EdgeMinds 2026 - Jetson setup for Track 2 (Campus Handbook Chatbot)
-# Source: edgeminds-starter-guide (4).html
+# EdgeMinds 2026 - Jetson Orin board setup for Track 2 (Campus Handbook Chatbot)
+# Source: "Deploy to NVIDIA Jetson Orin" section of edgeminds-starter-guide (4).html
 #
-# Run on the Jetson's terminal from inside your already-cloned project folder:
+# Run this INSIDE the browser-based Web Terminal on your booked Jetson slot
+# (edgeai.aiproff.ai -> your dashboard -> Open Terminal), from inside your
+# already-cloned project folder:
+#
 #   chmod +x jetson_setup_track2.sh
 #   ./jetson_setup_track2.sh
 
 set -e
 
-echo "=== 1. Verify board architecture ==="
+echo "=== Step 2: Verify board + resources ==="
 ARCH=$(uname -m)
-echo "Detected architecture: $ARCH"
+echo "Architecture: $ARCH"
 if [ "$ARCH" != "aarch64" ]; then
-    echo "WARNING: expected 'aarch64' for Jetson, got '$ARCH'. Continuing anyway."
+    echo "WARNING: expected 'aarch64' for Jetson, got '$ARCH'."
 fi
 
-echo
-echo "=== 2. System resource check ==="
 free -h
 if command -v jtop >/dev/null 2>&1; then
-    echo "(Run 'jtop' manually for the live resource monitor - it's interactive and can't run unattended in this script.)"
+    echo "(Run 'jtop' manually for the live GPU/RAM monitor - interactive, skipping in this script.)"
 else
-    echo "jtop not installed, skipping (install with: sudo pip3 install jetson-stats)"
+    echo "jtop not found - skipping (it should be preinstalled on the board image)."
 fi
 
 echo
-echo "=== 3. Install Ollama (Linux) ==="
-if command -v ollama >/dev/null 2>&1; then
-    echo "Ollama already installed: $(ollama --version)"
-else
-    curl -fsSL https://ollama.com/install.sh | sh
-    ollama --version
-fi
-
-echo
-echo "=== 4. Pull required models ==="
-# Recommended starting model (all tracks)
-ollama pull llama3.2:1b
-# Track 2 model
-ollama pull qwen2.5:1.5b
-
-echo
-echo "=== 5. Quick terminal model test ==="
-ollama run qwen2.5:1.5b "What causes rust disease in wheat crops?"
-
-echo
-echo "=== 6. Sync project from GitHub (git pull) ==="
+echo "=== Step 3: Sync project from GitHub ==="
 if [ -d .git ]; then
     git pull origin main
 else
-    echo "WARNING: current directory is not a git repo. cd into your project folder first, then re-run, or run 'git pull origin main' manually."
+    echo "WARNING: not inside a git repo. cd into your cloned project folder and re-run,"
+    echo "or clone it first with: git clone https://github.com/your-username/your-project.git"
 fi
 
 echo
-echo "=== 7. Python dependencies for Track 2 ==="
-pip install ollama pymupdf sentence-transformers faiss-cpu numpy
+echo "=== Step 5: Install ONLY the Python deps this project uses ==="
+echo "Do NOT run 'ollama pull' or restart the Ollama service - it's already running"
+echo "on the board with all approved models pre-loaded."
+# Track 2 packages
+pip install sentence-transformers faiss-cpu numpy
+# pymupdf isn't in the deployment step-5 list but handbook_bot.py needs it to read handbook.pdf
+pip install pymupdf
+# requests is needed to call the Ollama REST API directly (Step 6)
+pip install requests
+
+echo
+echo "=== Step 6: Sanity-check the Ollama REST API on the board ==="
+curl -s http://172.17.0.1:11434/api/generate -d '{
+  "model": "llama3.2:1b",
+  "prompt": "Reply with the single word: OK",
+  "stream": false,
+  "options": {
+    "num_ctx": 1024,
+    "num_gpu": 1,
+    "use_mmap": true
+  }
+}' | python3 -c "import sys, json; print(json.load(sys.stdin).get('response', '<no response field>'))" \
+  || echo "Could not reach http://172.17.0.1:11434 - check you're on the board's Web Terminal, not your laptop."
 
 echo
 echo "=== Setup complete ==="
-echo "Next steps:"
-echo "  1. Place handbook.pdf in this same folder as handbook_bot.py"
-echo "  2. Run: python test_ollama.py         (sanity check)"
-echo "  3. Run: python handbook_bot.py        (builds handbook.index on first run)"
-echo
-echo "Reminders from the guide (Track 2 constraints):"
-echo "  - Approved models only: llama3.2:1b, qwen2.5:1.5b, deepseek-r1:1.5b, mistral:1b (max 1.5B params)"
-echo "  - Text chunk size: 300 words maximum"
-echo "  - Jetson REST API endpoint (if needed): http://172.17.0.1:11434/api/generate"
+echo "Reminders:"
+echo "  - Jetson is fixed to model 'llama3.2:1b' ONLY. No exceptions, do not pull other models."
+echo "  - API endpoint: http://172.17.0.1:11434/api/generate"
+echo "  - Always: num_ctx=1024, num_gpu=1, use_mmap=True in the request payload."
+echo "  - Place handbook.pdf next to handbook_bot.py, then: python handbook_bot.py"
+echo "  - Sync workflow: edit on laptop -> git push -> git pull on this board (never manual file copy)."
+echo "  - Do >=3 full dry runs before your demo slot; save one run's output to a text file as backup."
