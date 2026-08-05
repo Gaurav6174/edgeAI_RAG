@@ -13,7 +13,7 @@ htmlcov/
 # Environment files
 .env
 *.env
-backend/.env
+# backend/.env
 
 # Node / Vite
 node_modules/
