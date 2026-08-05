@@ -75,18 +75,41 @@ fi
 echo "== Step 1: Install zstd =="
 sudo apt-get update && sudo apt-get install -y zstd
 
-echo "== Step 2: Install Ollama =="
-curl -fsSL https://ollama.com/install.sh | sh
+echo "== Step 2-4: Verify the board's pre-existing Ollama (do NOT install/serve/pull) =="
+# CONFIRMED on this platform's real board: Ollama is already running externally
+# (reachable via the docker bridge gateway, not localhost) with all approved
+# models pre-loaded. Installing/starting a second local Ollama here wastes
+# 5-10 min + disk and the app never talks to it anyway (see OLLAMA_HOST below).
+# The official platform doc is explicit: do not run `ollama pull` or restart
+# the service on the board.
+OLLAMA_HOST_VAL=$(grep -E '^OLLAMA_HOST=' backend/.env | tail -1 | cut -d= -f2-)
+OLLAMA_HOST_VAL="${OLLAMA_HOST_VAL:-http://172.17.0.1:11434}"
+OLLAMA_MODEL_VAL=$(grep -E '^OLLAMA_MODEL=' backend/.env | tail -1 | cut -d= -f2-)
+OLLAMA_MODEL_VAL="${OLLAMA_MODEL_VAL:-llama3.2:1b}"
+echo "Checking $OLLAMA_HOST_VAL for model $OLLAMA_MODEL_VAL ..."
 
-echo "== Step 3: Start Ollama =="
-ollama serve > /tmp/ollama.log 2>&1 &
-wait_for "http://localhost:11434" "Ollama server" 30
-
-echo "== Step 4: Pull model =="
-if ollama list 2>/dev/null | grep -q 'llama3.2:1b'; then
-    echo "llama3.2:1b already cached — skipping download"
-else
-    ollama pull llama3.2:1b
+OLLAMA_OK=0
+for i in 1 2 3 4 5; do
+    RESP=$(curl -s "$OLLAMA_HOST_VAL/api/generate" -d "{
+      \"model\": \"$OLLAMA_MODEL_VAL\",
+      \"prompt\": \"Reply with the single word: OK\",
+      \"stream\": false,
+      \"options\": { \"num_ctx\": 1024, \"num_gpu\": 1, \"use_mmap\": true }
+    }")
+    MODEL_REPLY=$(echo "$RESP" | python3 -c "import sys, json; print(json.load(sys.stdin).get('response',''))" 2>/dev/null)
+    if [ -n "$MODEL_REPLY" ]; then
+        echo "✅ Board Ollama responded on attempt $i: $MODEL_REPLY"
+        OLLAMA_OK=1
+        break
+    fi
+    echo "attempt $i: no response yet (runner cold-start is normal here), retrying..."
+    sleep 2
+done
+if [ "$OLLAMA_OK" -ne 1 ]; then
+    echo "❌ $OLLAMA_HOST_VAL never responded after 5 attempts. This means the board's"
+    echo "   shared Ollama service itself is down — that's a platform issue, not"
+    echo "   something to fix by installing a local Ollama. Contact your campus ambassador."
+    exit 1
 fi
 
 echo "== Step 5: Setup Python =="
