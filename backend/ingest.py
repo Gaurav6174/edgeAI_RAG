@@ -74,10 +74,10 @@ def build_index(chunks: list[dict]) -> tuple:
 
     return faiss_index, bm25_index, embeddings
 
-def save_index(faiss_index, bm25_index, chunks: list[dict], filename: str):
+def save_index(faiss_index, bm25_index, chunks: list[dict], filename: str, embeddings: np.ndarray):
     """ Save the FAISS index, BM25 index, and chunk metadata to disk(jetson) """
     os.makedirs(INDEX_DIR, exist_ok=True)
-    
+
     # Save FAISS index
     # faiss.write_index(faiss_index, os.path.join(INDEX_DIR, f"{filename}_faiss.index"))
     faiss.write_index(faiss_index, os.path.join(INDEX_DIR, "faiss.index"))
@@ -89,12 +89,10 @@ def save_index(faiss_index, bm25_index, chunks: list[dict], filename: str):
     with open(os.path.join(INDEX_DIR, "chunks.pkl"), "wb") as f:
         pickle.dump(chunks, f)
 
-    ## save embeddings for potential reranking use
-    np.save(os.path.join(INDEX_DIR, "embeddings.npy"), 
-            embed_model.encode([c["text"] for c in chunks],
-                                convert_to_numpy=True,
-                                normalize_embeddings=True))
-    
+    ## save embeddings for potential reranking use (reuses the ones already
+    ## computed in build_index instead of re-encoding every chunk a second time)
+    np.save(os.path.join(INDEX_DIR, "embeddings.npy"), embeddings)
+
     print(f"Index saved for {filename} with {len(chunks)} chunks.")
 
 def load_index():
@@ -123,6 +121,6 @@ def ingest_pdf(pdf_path: str, filename: str) -> int:
     pages = extract_text_from_pdf(pdf_path)
     chunks = chunk_text(pages, source=filename)
     faiss_index, bm25_index, embeddings = build_index(chunks)
-    save_index(faiss_index, bm25_index, chunks, filename)
+    save_index(faiss_index, bm25_index, chunks, filename, embeddings)
     return len(chunks)
 

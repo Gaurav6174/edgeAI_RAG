@@ -1,28 +1,24 @@
 #!/bin/bash
-# Run from the project root (edgeAI/). Run preflight_check.sh first.
+# Single-shot Jetson Orin board deployment for Campus Handbook Bot.
+# Run from the project root, inside the board's Web Terminal (edgeai.aiproff.ai
+# dashboard -> Open Terminal), after `git pull`:
 #
-# CONFIRMED from a real deployment log on this exact platform (AiProff Edge AI
-# Cloud Lab): each booked session spins up a FRESH container (different
-# hostname every time — e.g. 988cf0530c3f, 441b38050c99, df89f984559e...).
-# Nothing survives between separately-booked sessions except what's in git.
-# Budget ~5-10 minutes of every session for zstd + Ollama install + model pull
-# — there is no way to skip this by caching across sessions on this platform.
+#   chmod +x deploy_jetson.sh
+#   ./deploy_jetson.sh
+#
+# CONFIRMED from real sessions on this platform (AiProff Edge AI Cloud Lab):
+# each booked session spins up a FRESH container (hostname changes every
+# time). Nothing survives between separately-booked sessions except git and,
+# usually, ~/.ollama. Budget a few minutes per session for pip installs.
+#
+# CONFIRMED: the board's Ollama server is already running externally (see
+# OLLAMA_HOST in backend/.env — it's the docker bridge gateway IP, not
+# localhost) with all approved models pre-loaded. Do NOT install, serve, or
+# `ollama pull` on the board — the official platform doc says so explicitly,
+# and this project's own .env already points at the existing service.
 set -e
 
-# PYTHONNOUSERSITE prevents Python from also loading ~/.local/lib/pythonX/site-packages.
-# Root cause of the single biggest time-sink in the real deployment log: stray
-# `pip install --user` runs (from earlier troubleshooting) left a second,
-# conflicting numpy/sentence-transformers/transformers in ~/.local, which
-# shadowed the clean venv copies in some execution contexts (uvicorn subprocess)
-# but not others (interactive `python3 -c`) — same bug, looked like two bugs.
-export PYTHONNOUSERSITE=1
-
-# Cache dirs are only useful for reruns *within* the same session — see the
-# ephemeral-container note above. Still worth setting so a retry after a
-# crash doesn't re-download inside the same booking.
-export HF_HOME="${HF_HOME:-$PWD/.cache/huggingface}"
-export OLLAMA_MODELS="${OLLAMA_MODELS:-$PWD/.cache/ollama}"
-mkdir -p "$HF_HOME" "$OLLAMA_MODELS"
+cd "$(dirname "$0")"
 
 wait_for() {
     # wait_for <url> <label> <max_seconds>
@@ -30,58 +26,63 @@ wait_for() {
     until curl -sf "$url" -o /dev/null 2>/dev/null; do
         waited=$((waited + 2))
         if [ "$waited" -ge "$max" ]; then
-            echo "❌ Timed out waiting for $label ($url) after ${max}s"
+            echo "FAILED: timed out waiting for $label ($url) after ${max}s"
             return 1
         fi
         sleep 2
     done
-    echo "✅ $label is up after ${waited}s"
+    echo "OK: $label is up after ${waited}s"
 }
 
-echo "== Step 0: Sanity checks =="
-[ -f backend/.env ] || { echo "❌ backend/.env missing — copy it before continuing."; exit 1; }
-[ -f data/index/chunks.pkl ] || { echo "❌ data/index/chunks.pkl missing — copy your prebuilt index files (they're gitignored) before continuing."; exit 1; }
-PYVER=$(python3 -c 'import sys; print(sys.version_info[:2]>=(3,10))')
-[ "$PYVER" = "True" ] || { echo "❌ python3 is older than 3.10 — faiss-cpu==1.14.2 will not install."; exit 1; }
+# always exits 0 - prints the 'response' field or '' on any failure, so it's
+# safe to use in a `set -e` script without extra guarding
+extract_response() {
+    python3 -c "
+import sys, json
+try:
+    print(json.load(sys.stdin).get('response', ''))
+except Exception:
+    print('')
+"
+}
 
+echo "== Step 0: Preflight checks =="
+FAIL=0
+[ "$(uname -m)" = "aarch64" ] || { echo "FAILED: architecture is not aarch64"; FAIL=1; }
+python3 -c 'import sys; assert sys.version_info >= (3,10)' 2>/dev/null || { echo "FAILED: python3 < 3.10 (faiss-cpu needs it)"; FAIL=1; }
+[ -f backend/.env ] || { echo "FAILED: backend/.env missing"; FAIL=1; }
+[ -f backend/requirements.txt ] || { echo "FAILED: backend/requirements.txt missing"; FAIL=1; }
+for f in chunks.pkl bm25.pkl faiss.index; do
+    [ -f "data/index/$f" ] || { echo "FAILED: data/index/$f missing"; FAIL=1; }
+done
+if [ "$FAIL" -eq 1 ]; then
+    echo "Preflight failed - fix the items above before continuing."
+    exit 1
+fi
+echo "OK: preflight passed"
+
+echo
 echo "== Step 0.5: Disk hygiene =="
-# Real log evidence: this platform's containers ship with ~108-111GB already
-# consumed by the base image, leaving only ~3-5GB headroom. "No space left on
-# device" killed a whole session in the past. Clean proactively, don't wait
-# for the error.
+# Real evidence from this platform: containers ship with most of the disk
+# already consumed, and ~/.local accumulates multi-GB cruft across sessions
+# from stray `pip install --user` runs, which shadows the clean venv copies
+# in some execution contexts (uvicorn subprocess) but not others. Wholesale
+# removal, not partial. Intentionally NOT touching ~/.ollama - the board's
+# model cache lives elsewhere (external service), so nothing here is ours.
 pip cache purge >/dev/null 2>&1 || true
 rm -rf "$HOME/.cache/pip" 2>/dev/null || true
 sudo apt-get clean >/dev/null 2>&1 || apt-get clean >/dev/null 2>&1 || true
-# Confirmed on real hardware: ~/.local accumulates to multiple GB (torch,
-# numpy, sentence-transformers, transformers, sklearn from old `pip install
-# --user` runs across earlier sessions) and has zero legitimate use in this
-# workflow — it's the exact source of the .local-vs-.venv import shadowing
-# bug documented in the deployment log. Wholesale removal, not partial.
 if [ -d "$HOME/.local" ]; then
     FREED=$(du -sh "$HOME/.local" 2>/dev/null | cut -f1)
-    echo "Removing ~/.local ($FREED) — leftover user-site packages from earlier sessions"
+    echo "Removing ~/.local ($FREED) - leftover user-site packages from earlier sessions"
     rm -rf "$HOME/.local"
 fi
-# NOTE: intentionally NOT touching ~/.ollama — pulled models cache there and
-# storage has been observed to persist across session bookings, so it may
-# already contain llama3.2:1b from a previous session.
 AVAIL_KB=$(df --output=avail -k / | tail -1)
 echo "Free space on /: $((AVAIL_KB / 1024)) MB"
-if [ "$AVAIL_KB" -lt 1500000 ]; then
-    echo "⚠️  Less than ~1.5GB free on / — this has caused hard failures before."
-    echo "    Consider: sudo apt-get autoremove -y; rm -rf ~/.cache/* (except HF_HOME/OLLAMA_MODELS above)"
-fi
+[ "$AVAIL_KB" -lt 1500000 ] && echo "WARNING: less than ~1.5GB free on / - this has caused hard failures before."
 
-echo "== Step 1: Install zstd =="
-sudo apt-get update && sudo apt-get install -y zstd
-
-echo "== Step 2-4: Verify the board's pre-existing Ollama (do NOT install/serve/pull) =="
-# CONFIRMED on this platform's real board: Ollama is already running externally
-# (reachable via the docker bridge gateway, not localhost) with all approved
-# models pre-loaded. Installing/starting a second local Ollama here wastes
-# 5-10 min + disk and the app never talks to it anyway (see OLLAMA_HOST below).
-# The official platform doc is explicit: do not run `ollama pull` or restart
-# the service on the board.
+echo
+echo "== Step 1: Verify the board's existing Ollama (no install/serve/pull) =="
 OLLAMA_HOST_VAL=$(grep -E '^OLLAMA_HOST=' backend/.env | tail -1 | cut -d= -f2-)
 OLLAMA_HOST_VAL="${OLLAMA_HOST_VAL:-http://172.17.0.1:11434}"
 OLLAMA_MODEL_VAL=$(grep -E '^OLLAMA_MODEL=' backend/.env | tail -1 | cut -d= -f2-)
@@ -95,32 +96,45 @@ for i in 1 2 3 4 5; do
       \"prompt\": \"Reply with the single word: OK\",
       \"stream\": false,
       \"options\": { \"num_ctx\": 1024, \"num_gpu\": 1, \"use_mmap\": true }
-    }")
-    MODEL_REPLY=$(echo "$RESP" | python3 -c "import sys, json; print(json.load(sys.stdin).get('response',''))" 2>/dev/null)
+    }" 2>/dev/null)
+    MODEL_REPLY=$(echo "$RESP" | extract_response)
     if [ -n "$MODEL_REPLY" ]; then
-        echo "✅ Board Ollama responded on attempt $i: $MODEL_REPLY"
+        echo "OK: board Ollama responded on attempt $i: $MODEL_REPLY"
         OLLAMA_OK=1
         break
     fi
     echo "attempt $i: no response yet (runner cold-start is normal here), retrying..."
     sleep 2
 done
+
 if [ "$OLLAMA_OK" -ne 1 ]; then
-    echo "❌ $OLLAMA_HOST_VAL never responded after 5 attempts. This means the board's"
-    echo "   shared Ollama service itself is down — that's a platform issue, not"
-    echo "   something to fix by installing a local Ollama. Contact your campus ambassador."
+    echo
+    echo "FAILED: $OLLAMA_HOST_VAL never responded after 5 attempts. Diagnostics:"
+    echo "--- registered models ---"
+    curl -s "$OLLAMA_HOST_VAL/api/tags" || echo "(unreachable)"
+    echo "--- memory ---"
+    free -h
+    echo "--- gpu ---"
+    nvidia-smi 2>/dev/null || echo "(nvidia-smi unavailable in this shell)"
+    echo
+    echo "This means the board's shared Ollama service itself is down - that's a"
+    echo "platform issue, not something to fix by installing a local Ollama."
+    echo "Contact your campus ambassador (Mehak Ansari / Madhav Singh / Rohit Ojha)."
     exit 1
 fi
 
-echo "== Step 5: Setup Python =="
-# --system-site-packages is deliberate and confirmed necessary: JetPack ships
-# an NVIDIA-built torch (seen in the real log as torch==2.5.0a0+...nv24.08)
-# with CUDA/Tegra support. A plain venv would lose that and fall back to a
+echo
+echo "== Step 2: Python environment =="
+# PYTHONNOUSERSITE prevents Python from also loading ~/.local/lib/pythonX/site-packages,
+# which is exactly what caused the .local-vs-.venv import shadowing bug seen on this
+# platform (uvicorn subprocess picks up a stale ~/.local copy while `python3 -c` doesn't).
+export PYTHONNOUSERSITE=1
+export HF_HOME="${HF_HOME:-$PWD/.cache/huggingface}"
+mkdir -p "$HF_HOME"
+
+# --system-site-packages is deliberate: JetPack ships an NVIDIA-built torch with
+# CUDA/Tegra support baked in. A plain venv would lose that and fall back to a
 # generic CPU-only PyPI wheel.
-# Real failure mode hit on this platform: "ensurepip is not available" because
-# python3.10-venv isn't installed and the base image is partially read-only.
-# Try the normal path first, fall back to a pip-less venv + manual bootstrap
-# rather than aborting the whole run.
 rm -rf .venv
 if ! python3 -m venv .venv --system-site-packages 2>/tmp/venv_err; then
     echo "Normal venv creation failed:"; cat /tmp/venv_err
@@ -142,10 +156,12 @@ else
     source .venv/bin/activate
 fi
 
-echo "== Step 6: Install packages (single source of truth: requirements.txt) =="
+echo
+echo "== Step 3: Install packages (single source of truth: requirements.txt) =="
 pip install --no-user -r backend/requirements.txt
 
-echo "== Step 6.5: Verify no .local contamination =="
+echo
+echo "== Step 4: Verify no .local contamination =="
 python3 -c "
 import sentence_transformers, numpy, transformers
 for mod in (sentence_transformers, numpy, transformers):
@@ -155,7 +171,8 @@ for mod in (sentence_transformers, numpy, transformers):
 print('clean: all imports resolve inside .venv')
 "
 
-echo "== Step 7: Rebuild FAISS index natively (avoids any residual numpy/FAISS ABI mismatch) =="
+echo
+echo "== Step 5: Rebuild FAISS index natively (avoids any residual numpy/FAISS ABI mismatch) =="
 cd backend
 python3 - <<'PYEOF'
 import pickle
@@ -180,10 +197,13 @@ faiss.write_index(index, f"{INDEX_DIR}/faiss.index")
 print(f"Done: {index.ntotal} vectors")
 PYEOF
 
-echo "== Step 8: Start backend =="
+echo
+echo "== Step 6: Start backend =="
 python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 > /tmp/uvicorn.log 2>&1 &
 if wait_for "http://localhost:8000/health" "Backend" 90; then
     curl http://localhost:8000/health
+    echo
+    echo "Backend is up. Open http://<jetson-board-ip>:8000 in a browser."
 else
     echo "---- last 50 lines of uvicorn log ----"
     tail -n 50 /tmp/uvicorn.log

@@ -2,6 +2,7 @@ import os
 
 import faiss
 import numpy as np
+import torch
 from dotenv import load_dotenv
 from sentence_transformers import CrossEncoder, SentenceTransformer
 
@@ -83,7 +84,10 @@ def rerank(query: str, candidates: list[tuple]) -> list[tuple]:
 
     # Cross-encoder needs (query, text) pairs
     pairs = [(query, chunk["text"]) for chunk, _ in candidates]
-    scores = reranker.predict(pairs)
+    # ms-marco-MiniLM-L-6-v2 returns unbounded raw logits (e.g. -8..8), not a
+    # 0-1 score — sigmoid it so CONFIDENCE_THRESHOLD and the frontend's
+    # percentage badge operate on the 0-1 scale they're both written for.
+    scores = reranker.predict(pairs, activation_fct=torch.nn.Sigmoid())
 
     # Attach new scores and sort
     reranked = sorted(
