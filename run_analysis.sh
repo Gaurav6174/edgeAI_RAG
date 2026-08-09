@@ -13,7 +13,11 @@
 #   ./run_analysis.sh
 set -e
 
-cd "$(dirname "$0")"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$PROJECT_DIR"
+
+PYTHON_BIN="$PROJECT_DIR/.venv/bin/python3"
+[ -x "$PYTHON_BIN" ] || { echo "FAILED: $PYTHON_BIN not found - run deploy_jetson.sh first"; exit 1; }
 
 CSV_PATH="data/eval/questions.csv"
 REPORT_PATH="data/eval/eval_report.json"
@@ -27,7 +31,7 @@ curl -sf http://localhost:8000/health >/dev/null 2>&1 || {
 }
 HEALTH=$(curl -s http://localhost:8000/health)
 echo "Backend health: $HEALTH"
-echo "$HEALTH" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if d.get('index_loaded') else 1)" \
+echo "$HEALTH" | "$PYTHON_BIN" -c "import sys,json; d=json.load(sys.stdin); exit(0 if d.get('index_loaded') else 1)" \
     || { echo "FAILED: no document is currently indexed - ingest a PDF first"; exit 1; }
 echo "OK: backend healthy and a document is indexed"
 
@@ -56,7 +60,7 @@ trap 'kill "$SAMPLER_PID" 2>/dev/null || true' EXIT
 echo
 echo "== Running evaluation against $CSV_PATH =="
 cd backend
-python3 evaluate.py
+"$PYTHON_BIN" evaluate.py
 cd ..
 
 kill "$SAMPLER_PID" 2>/dev/null || true
@@ -88,7 +92,7 @@ echo "$OFFLINE_STATUS"
 
 echo
 echo "== Results =="
-python3 - "$REPORT_PATH" "$MEM_SAMPLES" <<'PYEOF'
+"$PYTHON_BIN" - "$REPORT_PATH" "$MEM_SAMPLES" <<'PYEOF'
 import json
 import sys
 
