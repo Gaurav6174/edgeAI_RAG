@@ -1,9 +1,11 @@
+import json
 import os
 import pickle
-import fitz 
+import re
+import fitz
 import faiss
 import numpy as np
-from rank_bm25 import BM25Okapi 
+from rank_bm25 import BM25Okapi
 from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 
@@ -16,6 +18,24 @@ CHUNK_SIZE   = 150      #300
 CHUNK_OVERLAP = 20
 
 embed_model = SentenceTransformer(EMBED_MODEL)
+
+def slugify(filename: str) -> str:
+    """Turn a filename into a filesystem-safe, stable book id."""
+    base = os.path.splitext(filename)[0].lower()
+    slug = re.sub(r'[^a-z0-9]+', '-', base).strip('-')
+    return slug or "book"
+
+def list_books() -> list[dict]:
+    """Scan INDEX_DIR for per-book subfolders and return their metadata."""
+    if not os.path.isdir(INDEX_DIR):
+        return []
+    books = []
+    for entry in sorted(os.listdir(INDEX_DIR)):
+        meta_path = os.path.join(INDEX_DIR, entry, "meta.json")
+        if os.path.isfile(meta_path):
+            with open(meta_path, encoding="utf-8") as f:
+                books.append(json.load(f))
+    return books
 
 def extract_text_from_pdf(pdf_path: str) -> list[dict]:
     doc = fitz.open(pdf_path)
@@ -74,36 +94,38 @@ def build_index(chunks: list[dict]) -> tuple:
 
     return faiss_index, bm25_index, embeddings
 
-def save_index(faiss_index, bm25_index, chunks: list[dict], filename: str, embeddings: np.ndarray):
-    """ Save the FAISS index, BM25 index, and chunk metadata to disk(jetson) """
-    os.makedirs(INDEX_DIR, exist_ok=True)
+def save_index(faiss_index, bm25_index, chunks: list[dict], filename: str, embeddings: np.ndarray, book_id: str):
+    """ Save the FAISS index, BM25 index, and chunk metadata for one book """
+    book_dir = os.path.join(INDEX_DIR, book_id)
+    os.makedirs(book_dir, exist_ok=True)
 
-    # Save FAISS index
-    # faiss.write_index(faiss_index, os.path.join(INDEX_DIR, f"{filename}_faiss.index"))
-    faiss.write_index(faiss_index, os.path.join(INDEX_DIR, "faiss.index"))
+    faiss.write_index(faiss_index, os.path.join(book_dir, "faiss.index"))
 
-    # Save BM25 index and chunk metadata using pickle
-    with open(os.path.join(INDEX_DIR, "bm25.pkl"), "wb") as f:
+    with open(os.path.join(book_dir, "bm25.pkl"), "wb") as f:
         pickle.dump(bm25_index, f)
 
-    with open(os.path.join(INDEX_DIR, "chunks.pkl"), "wb") as f:
+    with open(os.path.join(book_dir, "chunks.pkl"), "wb") as f:
         pickle.dump(chunks, f)
 
     ## save embeddings for potential reranking use (reuses the ones already
     ## computed in build_index instead of re-encoding every chunk a second time)
-    np.save(os.path.join(INDEX_DIR, "embeddings.npy"), embeddings)
+    np.save(os.path.join(book_dir, "embeddings.npy"), embeddings)
 
-    print(f"Index saved for {filename} with {len(chunks)} chunks.")
+    with open(os.path.join(book_dir, "meta.json"), "w", encoding="utf-8") as f:
+        json.dump({"book_id": book_id, "filename": filename, "chunks_count": len(chunks)}, f)
 
-def load_index():
-    """load the persistent indexes and metadata from disk"""
-    faiss_path = os.path.join(INDEX_DIR, "faiss.index")
-    bm25_path = os.path.join(INDEX_DIR, "bm25.pkl")
-    chunks_path = os.path.join(INDEX_DIR, "chunks.pkl")
+    print(f"Index saved for {filename} (book_id={book_id}) with {len(chunks)} chunks.")
+
+def load_index(book_id: str):
+    """load one book's persistent index and metadata from disk"""
+    book_dir = os.path.join(INDEX_DIR, book_id)
+    faiss_path = os.path.join(book_dir, "faiss.index")
+    bm25_path = os.path.join(book_dir, "bm25.pkl")
+    chunks_path = os.path.join(book_dir, "chunks.pkl")
 
     if not all(os.path.exists(p) for p in [faiss_path, bm25_path, chunks_path]):
         return None, None, None
-    
+
     faiss_index = faiss.read_index(faiss_path)
 
     with open(bm25_path, "rb") as f:
@@ -112,15 +134,16 @@ def load_index():
     with open(chunks_path, "rb") as f:
         chunks = pickle.load(f)
 
-    print(f"Loaded index with {len(chunks)} chunks.")
+    print(f"Loaded book '{book_id}' with {len(chunks)} chunks.")
     return faiss_index, bm25_index, chunks
 
-def ingest_pdf(pdf_path: str, filename: str) -> int:
-    """ Main function to ingest a PDF and build indexes """
+def ingest_pdf(pdf_path: str, filename: str) -> tuple[int, str]:
+    """ Main function to ingest a PDF and build indexes for it as its own book """
 
+    book_id = slugify(filename)
     pages = extract_text_from_pdf(pdf_path)
     chunks = chunk_text(pages, source=filename)
     faiss_index, bm25_index, embeddings = build_index(chunks)
-    save_index(faiss_index, bm25_index, chunks, filename, embeddings)
-    return len(chunks)
+    save_index(faiss_index, bm25_index, chunks, filename, embeddings, book_id)
+    return len(chunks), book_id
 

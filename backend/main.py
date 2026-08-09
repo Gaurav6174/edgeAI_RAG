@@ -2,14 +2,14 @@ import os
 import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
-from models import QueryRequest, QueryResponse, IngestResponse, Citation
-from ingest import ingest_pdf, load_index
+from models import QueryRequest, IngestResponse, Citation, Book
+from ingest import ingest_pdf, load_index, list_books
 from retriever import retrieve
-from confidence import score_confidence, is_confident
+from confidence import is_confident
 from llm import query_ollama_stream
 
 load_dotenv()
@@ -17,23 +17,42 @@ load_dotenv()
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "../data/uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-app = FastAPI(title = "Campus Handbook Bot")
+app = FastAPI(title="Campus Handbook Bot")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins = ["http://localhost:5173", "http://localhost:3000"],
-    allow_methods = ["*"],
-    allow_headers = ["*"],
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Load index into memory at startup (if it exists)
-faiss_index, bm25_index, chunks = load_index()
+# In-memory cache of every book's index: book_id -> (faiss_index, bm25_index, chunks)
+BOOKS: dict[str, tuple] = {}
+LAST_INGESTED_BOOK_ID: str | None = None
+
+
+def _load_all_books():
+    for meta in list_books():
+        book_id = meta["book_id"]
+        faiss_index, bm25_index, chunks = load_index(book_id)
+        if faiss_index is not None:
+            BOOKS[book_id] = (faiss_index, bm25_index, chunks)
+
+
+_load_all_books()
+if BOOKS:
+    LAST_INGESTED_BOOK_ID = next(reversed(BOOKS))
 
 ## API ENDPOINTS
 
+@app.get("/books", response_model=list[Book])
+async def get_books():
+    return [Book(**meta) for meta in list_books()]
+
+
 @app.post("/ingest", response_model=IngestResponse)
 async def ingest(file: UploadFile = File(...)):
-    global faiss_index, bm25_index, chunks        # ← this line is critical
+    global LAST_INGESTED_BOOK_ID
 
     if not file.filename.endswith(".pdf"):
         raise HTTPException(400, "Only PDF files are accepted")
@@ -42,30 +61,36 @@ async def ingest(file: UploadFile = File(...)):
     with open(save_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    num_chunks = ingest_pdf(save_path, file.filename)
+    num_chunks, book_id = ingest_pdf(save_path, file.filename)
 
-    faiss_index, bm25_index, chunks = load_index()  # reload into globals
+    faiss_index, bm25_index, chunks = load_index(book_id)
+    BOOKS[book_id] = (faiss_index, bm25_index, chunks)
+    LAST_INGESTED_BOOK_ID = book_id
 
     return IngestResponse(
         message="Ingestion complete",
         chunks_indexed=num_chunks,
-        filename=file.filename
+        filename=file.filename,
+        book_id=book_id,
     )
+
+
+def _resolve_book(book_id: str | None) -> tuple:
+    book_id = book_id or LAST_INGESTED_BOOK_ID
+    if not book_id or book_id not in BOOKS:
+        raise HTTPException(400, "No such book indexed. Please upload a PDF first or pick a valid book_id.")
+    return BOOKS[book_id]
+
 
 @app.post("/query")
 async def query(request: QueryRequest):
     """
-    Accepts a question, retrieves relevant chunks,
+    Accepts a question + book_id, retrieves relevant chunks from that book,
     checks confidence, then streams the LLM answer.
     """
-    global faiss_index, bm25_index, chunks 
-    if faiss_index is None:
-        raise HTTPException(400, "No documents indexed yet. Please upload a PDF first.")
+    faiss_index, bm25_index, chunks = _resolve_book(request.book_id)
 
-    #retrieve + rerank
-    top_chunks, confidence = retrieve(
-        request.question, faiss_index, bm25_index, chunks
-    )
+    top_chunks, confidence = retrieve(request.question, faiss_index, bm25_index, chunks)
 
     # Confidence gate: if retrieval is weak, don't call the LLM
     if not is_confident(confidence):
@@ -73,35 +98,34 @@ async def query(request: QueryRequest):
             yield "I couldn't find this in the handbook."
         return StreamingResponse(not_found_stream(), media_type="text/plain")
 
-    # Stream LLM response token by token
     return StreamingResponse(
         query_ollama_stream(request.question, top_chunks),
         media_type="text/plain"
     )
 
+
 @app.get("/citations")
-async def get_citations(question: str):
+async def get_citations(question: str, book_id: str | None = None):
     """
     Separate endpoint to get citations for a question.
     Frontend calls this alongside /query to display sources.
     """
-    global faiss_index, bm25_index, chunks 
-    if faiss_index is None:
+    try:
+        faiss_index, bm25_index, chunks = _resolve_book(book_id)
+    except HTTPException:
         return {"citations": [], "confidence": 0.0, "found": False}
 
-    top_chunks, confidence = retrieve(
-        question, faiss_index, bm25_index, chunks
-    )
+    top_chunks, confidence = retrieve(question, faiss_index, bm25_index, chunks)
 
     found = is_confident(confidence)
     citations = [
         Citation(
-            text = c["text"][:300] + "..." if len(c["text"]) > 300 else c["text"],
-            source = c["source"],
-            page = c.get("page")
-        )   
+            text=c["text"][:300] + "..." if len(c["text"]) > 300 else c["text"],
+            source=c["source"],
+            page=c.get("page")
+        )
         for c in top_chunks
-    ]   if found else []
+    ] if found else []
 
     return {
         "citations": [c.dict() for c in citations],
@@ -109,23 +133,19 @@ async def get_citations(question: str):
         "found": found
     }
 
+
 @app.get("/health")
 async def health():
     return {
         "status": "ok",
-        "index_loaded": faiss_index is not None,
-        "chunk_count": len(chunks) if chunks else 0
+        "index_loaded": len(BOOKS) > 0,
+        "chunk_count": sum(len(chunks) for _, _, chunks in BOOKS.values()),
+        "books_loaded": len(BOOKS),
     }
 
-# Serve built frontend from public/dist
-FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "public", "dist")
 
-if os.path.isdir(FRONTEND_DIR):
-    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIR, "assets")), name="assets")
-
-    @app.get("/{full_path:path}")
-    async def serve_frontend(full_path: str):
-        file_path = os.path.join(FRONTEND_DIR, full_path.lstrip("/"))
-        if os.path.isfile(file_path):
-            return FileResponse(file_path)
-        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+# Serve the static frontend (plain HTML/CSS/JS, no build step) from backend/public.
+# Registered last so it never shadows the API routes above.
+PUBLIC_DIR = os.path.join(os.path.dirname(__file__), "public")
+if os.path.isdir(PUBLIC_DIR):
+    app.mount("/", StaticFiles(directory=PUBLIC_DIR, html=True), name="static")
