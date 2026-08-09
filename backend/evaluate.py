@@ -3,6 +3,8 @@ import csv
 import json
 import os
 import re
+import statistics
+import time
 import httpx
 from sentence_transformers import SentenceTransformer, util
 
@@ -57,19 +59,24 @@ async def ask(question: str, client: httpx.AsyncClient) -> dict:
     cit_res = await client.get(f"{BASE_URL}/citations", params={"question": question})
     cit_data = cit_res.json()
 
-    # get full answer by taking the stream
+    # get full answer by taking the stream — timed separately from the
+    # citations call above since this is the actual retrieval+rerank+LLM
+    # inference path, which is what "inference latency" should measure.
     answer = ""
+    start = time.perf_counter()
     async with client.stream(
         "POST", f"{BASE_URL}/query", json={"question": question}
     ) as res:
         async for chunk in res.aiter_text():
             answer += chunk
+    latency_ms = (time.perf_counter() - start) * 1000
 
     return {
         "answer": answer.strip(),
         "confidence": cit_data["confidence"],
         "found": cit_data["found"],
         "citations": cit_data.get("citations", []),
+        "latency_ms": latency_ms,
     }
 
 async def evaluate(csv_path: str):
@@ -107,6 +114,7 @@ async def evaluate(csv_path: str):
                         "similarity": 0.0,
                         "correct": False,
                         "outcome": "ERROR",
+                        "latency_ms": None,
                     }
                 )
                 continue
@@ -148,6 +156,7 @@ async def evaluate(csv_path: str):
                     "similarity": round(similarity, 3),
                     "correct": correct_answer,
                     "outcome": outcome,
+                    "latency_ms": round(result["latency_ms"], 1),
                 }
             )
 
@@ -164,6 +173,15 @@ async def evaluate(csv_path: str):
     )
     accuracy = (TP + TN) / len(results) if results else 0
 
+    latencies = [r["latency_ms"] for r in results if r["latency_ms"] is not None]
+    latency_stats = {
+        "avg_ms": round(statistics.mean(latencies), 1) if latencies else None,
+        "median_ms": round(statistics.median(latencies), 1) if latencies else None,
+        "p95_ms": round(statistics.quantiles(latencies, n=20)[18], 1) if len(latencies) >= 2 else (latencies[0] if latencies else None),
+        "min_ms": round(min(latencies), 1) if latencies else None,
+        "max_ms": round(max(latencies), 1) if latencies else None,
+    }
+
     # build report
     report = {
         "total_questions": len(results),
@@ -172,6 +190,7 @@ async def evaluate(csv_path: str):
             "precision": round(precision, 3),
             "recall": round(recall, 3),
             "f1_score": round(f1, 3),
+            "latency_ms": latency_stats,
         },
         "breakdown": {
             "true_positives": TP,
