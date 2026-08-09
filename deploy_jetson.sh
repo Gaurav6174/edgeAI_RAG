@@ -91,12 +91,15 @@ echo "Checking $OLLAMA_HOST_VAL for model $OLLAMA_MODEL_VAL ..."
 
 OLLAMA_OK=0
 for i in 1 2 3 4 5; do
+    # `|| true` matters here: under `set -e` a bare VAR=$(cmd) assignment
+    # aborts the whole script the instant curl fails at the connection level
+    # (refused/timeout) - silently, before this loop gets to print anything.
     RESP=$(curl -s "$OLLAMA_HOST_VAL/api/generate" -d "{
       \"model\": \"$OLLAMA_MODEL_VAL\",
       \"prompt\": \"Reply with the single word: OK\",
       \"stream\": false,
       \"options\": { \"num_ctx\": 1024, \"num_gpu\": 1, \"use_mmap\": true }
-    }" 2>/dev/null)
+    }" 2>/dev/null) || RESP=""
     MODEL_REPLY=$(echo "$RESP" | extract_response)
     if [ -n "$MODEL_REPLY" ]; then
         echo "OK: board Ollama responded on attempt $i: $MODEL_REPLY"
