@@ -160,6 +160,13 @@ echo
 echo "== Step 3: Install packages (single source of truth: requirements.txt) =="
 pip install --no-user -r backend/requirements.txt
 
+# --system-site-packages exposes Ubuntu's system pytz, which on this Jetson
+# image unconditionally reads /usr/share/zoneinfo/tzdata.zi (missing/corrupt
+# here) and crashes at import time - pulled in transitively via
+# sentence-transformers -> sklearn -> pandas -> pytz. A venv-local pytz
+# shadows the broken system one without touching system state.
+pip install --no-user -U pytz
+
 echo
 echo "== Step 4: Verify no .local contamination =="
 python3 -c "
