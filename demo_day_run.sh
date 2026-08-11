@@ -15,7 +15,8 @@
 #   - backend/.env configured with OLLAMA_HOST=http://172.17.0.1:11434
 #   - Pre-built index in data/index/ (faiss.index, bm25.pkl, chunks.pkl)
 #   - .venv with all Python deps installed
-#   - Node.js NOT required (frontend is served by backend/public/dist or API-only)
+#   - Node.js NOT required on the board — frontend/dist/ is a pre-built, committed
+#     bundle that the backend serves directly from :8000 (see backend/main.py)
 # =============================================================================
 set -euo pipefail
 
@@ -222,7 +223,7 @@ ok "=== Campus Handbook Bot is RUNNING ==="
 echo "  API:       http://localhost:8000"
 echo "  Health:    http://localhost:8000/health"
 echo "  API docs:  http://localhost:8000/docs"
-echo "  Frontend:  http://localhost:8000 (if public/dist/ exists)"
+echo "  Frontend:  http://localhost:8000 (served from frontend/dist/)"
 echo "  Backend PID: $BACKEND_PID (logs: /tmp/uvicorn_demo.log)"
 echo ""
 echo "To stop the backend: kill $BACKEND_PID"

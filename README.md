@@ -14,6 +14,7 @@ Campus Handbook Bot lets students and staff query institutional documents — ha
 
 ## Key features
 
+- **Multi-book support** — every uploaded PDF is indexed independently under its own `book_id`; switch, rename, or delete books from the UI and queries are scoped to whichever one is active
 - **Hybrid search** — combines FAISS semantic search with BM25 keyword search via Reciprocal Rank Fusion. Handles both conceptual queries ("what are the hostel rules") and exact lookups ("what is rule 4.2.1") that pure vector search fails on
 - **Cross-encoder reranking** — retrieves top-10 candidates then reranks to top-3 using a cross-encoder before passing context to the LLM, keeping the 1B model's context tight and accurate
 - **Confidence gating** — scores retrieval similarity before invoking the LLM. Queries below the threshold return "not found in handbook" instead of hallucinating an answer
@@ -28,15 +29,22 @@ Campus Handbook Bot lets students and staff query institutional documents — ha
 ```
 INGESTION PHASE
 PDF upload → PyMuPDF extraction → sentence chunking (300 words, 20 overlap)
-         → FAISS dense index (all-MiniLM-L6-v2) + BM25 sparse index → saved to disk
+         → FAISS dense index (all-MiniLM-L6-v2) + BM25 sparse index
+         → saved to disk under data/index/<book_id>/
 
 QUERY PHASE
-User query → hybrid retrieval (RRF fusion, top-10)
-          → cross-encoder rerank (top-3)
-          → confidence gate (threshold ≥ 0.35)
+User query + book_id → hybrid retrieval on that book's index (RRF fusion, top-10)
+          → cross-encoder rerank (top-3, sigmoid-normalized to 0-1)
+          → confidence gate (threshold ≥ CONFIDENCE_THRESHOLD)
           → Llama 3.2 1B via Ollama (streaming)
           → cited answer + confidence score → React frontend
 ```
+
+The frontend (`frontend/`) is a Vite/React app. In production the backend serves
+its **pre-built, committed** `frontend/dist/` directly from `:8000` — no Node.js
+needed on the deployment target (that build step is exactly what broke on the
+Jetson's Node 18 image; see `study.md`). For active UI development, run Vite's own
+dev server instead (`npm run dev`, port 5173) — see "Phase 1" below.
 
 ---
 
@@ -49,9 +57,9 @@ User query → hybrid retrieval (RRF fusion, top-10)
 | Sparse search | BM25 (rank-bm25) | Keyword and exact-match retrieval |
 | Reranking | cross-encoder/ms-marco-MiniLM-L-6-v2 | Precision rerank of top-10 to top-3 |
 | PDF parsing | PyMuPDF | Text extraction from institutional PDFs |
-| Backend | FastAPI (async) | Ingest + query REST API |
-| Frontend | React + Vite | Upload UI, streaming chat, citation display |
-| Deployment | SSH + scp | Two-phase: local dev → Jetson deployment |
+| Backend | FastAPI (async) | Ingest + query REST API, multi-book index management |
+| Frontend | React + Vite | Upload UI, book switcher, streaming chat, citation display; served by the backend from a pre-built `frontend/dist/` |
+| Deployment | `git pull` + `deploy_jetson.sh` / `demo_day_run.sh` | Board is a browser-only Web Terminal with no SSH/SCP — see [`study.md`](study.md) for why and what actually works |
 
 ---
 
@@ -60,36 +68,41 @@ User query → hybrid retrieval (RRF fusion, top-10)
 ```
 campus-handbook-bot/
 ├── backend/
-│   ├── main.py           — FastAPI entry point, CORS, all API routes
-│   ├── ingest.py         — PDF parse → chunk → embed → dual index
+│   ├── main.py           — FastAPI entry point, CORS, all API routes, serves frontend/dist/ from "/"
+│   ├── ingest.py         — PDF parse → chunk → embed → per-book dual index
 │   ├── retriever.py      — hybrid FAISS + BM25 search + cross-encoder rerank
 │   ├── llm.py            — Ollama streaming integration
 │   ├── confidence.py     — similarity threshold gate
-│   ├── models.py         — Pydantic request/response schemas
+│   ├── models.py         — Pydantic request/response schemas (incl. Book, RenameBookRequest)
 │   ├── evaluate.py       — RAG evaluation against ground-truth CSV
-│   ├── public/dist/      — built frontend (served by FastAPI)
 │   ├── requirements.txt
 │   └── .env
 ├── frontend/
-│   ├── public/           — static assets (icons, favicon)
+│   ├── dist/               — PRE-BUILT and committed (not gitignored) — this is what main.py serves.
+│   │                          Rebuild with `npm run build` and commit the result after any UI change.
+│   ├── public/              — static assets (icons, favicon)
 │   ├── src/
 │   │   ├── main.jsx
 │   │   ├── App.jsx
-│   │   ├── api.js        — all fetch calls to FastAPI (single source of truth)
+│   │   ├── api.js           — all fetch calls to FastAPI (single source of truth)
 │   │   ├── index.css
 │   │   └── components/
 │   │       ├── Upload.jsx      — PDF drag-and-drop + ingest trigger
-│   │       ├── Chat.jsx        — streaming chat interface
+│   │       ├── BookList.jsx    — book switcher: select / rename / delete
+│   │       ├── Chat.jsx        — streaming chat interface, scoped to the active book
 │   │       ├── Citation.jsx    — cited source display
 │   │       └── Confidence.jsx  — score badge + "not found" state
 │   ├── index.html
 │   ├── package.json
-│   ├── vite.config.js
+│   ├── vite.config.js         — dev proxy forwards /ingest, /query, /citations, /health, /books to :8000
 │   └── eslint.config.js
 ├── data/
-│   ├── uploads/          — ingested PDFs
-│   ├── index/            — persisted FAISS + BM25 index (copy to Jetson)
-│   └── eval/             — evaluation dataset + eval_report.json
+│   ├── uploads/           — ingested PDFs
+│   ├── index/<book_id>/   — persisted FAISS + BM25 index, one directory per uploaded book
+│   └── eval/              — evaluation dataset + eval_report.json
+├── deploy_jetson.sh       — full environment provisioning on a fresh Jetson session (see study.md)
+├── demo_day_run.sh        — restart + end-to-end smoke test once the environment exists
+├── study.md               — the real Jetson deployment war story: what broke, why, what fixed it
 └── README.md
 ```
 
@@ -147,7 +160,7 @@ RERANK_TOP_N=3
 CONFIDENCE_THRESHOLD=0.35
 ```
 
-Start the backend (serves both the API and the frontend):
+Start the backend (serves both the API and the pre-built frontend):
 
 ```bash
 cd backend
@@ -156,18 +169,21 @@ uvicorn main:app --port 8000
 
 > Use `--reload` only when actively editing backend code. Without it, the in-memory index persists correctly between requests.
 
-Open `http://localhost:8000` in your browser — the built frontend is served directly by FastAPI.
+Open `http://localhost:8000` in your browser — `frontend/dist/` (already built and
+committed) is served directly by FastAPI from `main.py`'s `StaticFiles` mount.
 
 Verify the API at `http://localhost:8000/health`:
 ```json
-{"status": "ok", "index_loaded": false, "chunks_count": 0}
+{"status": "ok", "index_loaded": false, "chunk_count": 0, "books_loaded": 0}
 ```
 
 Interactive API docs at `http://localhost:8000/docs`.
 
 ### 3. Frontend development (optional)
 
-If you're iterating on the UI, run the Vite dev server for hot-reload:
+Only needed if you're changing the UI — `frontend/dist/` already ships built and
+committed, so most of the time you can skip straight to step 4. For hot-reload
+while iterating:
 
 ```bash
 cd frontend
@@ -177,23 +193,26 @@ npm run dev
 
 Open `http://localhost:5173`.
 
-> The Vite proxy forwards all `/ingest`, `/query`, `/citations`, and `/health` calls to `localhost:8000` automatically — no CORS issues.
+> `vite.config.js`'s dev proxy forwards `/ingest`, `/query`, `/citations`, `/health`,
+> and `/books` calls to `localhost:8000` automatically — no CORS issues.
 
-When you're done, build and commit the changes:
+When you're done, **rebuild and commit** — `frontend/dist/` is tracked in git
+specifically so the deploy target never needs Node.js:
 
 ```bash
 cd frontend
 npm run build
-# output goes to dist/ — do NOT move it manually
+git add dist/
 ```
 
-> The built frontend is served from `backend/public/dist/`. The build output is already copied there (symlinked or pre-deployed), so simply run `npm run build` from the frontend directory, then restart the backend.
+The backend serves whatever's in `dist/` directly; no copy step, no separate
+`backend/public/` — just restart `uvicorn` to pick up the new build.
 
 ### 4. Test the full pipeline
 
 1. Open `http://localhost:8000`
-2. Upload a PDF using the upload card (drag and drop supported)
-3. Wait for the "Indexed N chunks" confirmation
+2. Upload a PDF using the upload card (drag and drop supported) — it becomes its own book
+3. Wait for the "Indexed N chunks" confirmation, and pick it in the book list if it isn't auto-selected
 4. Type a question in the chat
 5. Answer streams in token by token with citations and confidence score below
 
@@ -201,71 +220,53 @@ npm run build
 
 ## Phase 2 — Jetson Orin Nano deployment
 
-### Before switching to the Jetson
+**Read [`study.md`](study.md) first.** It's the full account of why this section
+looks the way it does — a booked slot on AiProff's Edge AI Cloud Lab gives you a
+browser-only Web Terminal into a fresh, disposable container each session, with
+**no SSH and no SCP**, despite what the program's own docs originally implied. Every
+step below exists because of a real failure mode documented there; the summary here
+is the golden path, not the reasoning.
 
-Build and verify the full pipeline locally first. Then prepare the index for transfer:
+### What actually works, end to end
 
-```bash
-# confirm index files exist
-ls data/index/
-# should show: faiss.index  bm25.pkl  chunks.pkl  embeddings.npy
-```
-
-These files are the pre-built index — transferring them means no re-ingestion or re-embedding on the board.
-
-### Transfer files to Jetson
-
-```bash
-# copy the pre-built index (no re-ingestion needed on Jetson)
-scp -r data/index/ username@<jetson-ip>:/home/username/campus-handbook-bot/data/
-
-# copy the backend
-scp -r backend/ username@<jetson-ip>:/home/username/campus-handbook-bot/
-
-# build and copy the frontend (backend serves it from public/dist/)
-cd frontend && npm run build && cp -r dist/ ../backend/public/
-
-# copy any PDF you want available on the board
-scp data/uploads/handbook.pdf username@<jetson-ip>:/home/username/campus-handbook-bot/data/uploads/
-```
-
-### On the Jetson board
-
-```bash
-# SSH into the board
-ssh username@<jetson-ip>
-
-# pull the model (Ollama is pre-installed on the board)
-ollama pull llama3.2:1b
-
-# set up Python environment
-cd campus-handbook-bot
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r backend/requirements.txt
-
-# start the backend — identical command to local
-cd backend
-uvicorn main:app --port 8000
-```
-
-The `.env` file is identical — `OLLAMA_HOST=http://localhost:11434` works on Jetson too because Ollama runs locally there as well.
+1. **`git clone`** the repo into the booked session — this is the *only* way code
+   reaches the board. There's no file upload, no reachable IP for `scp`.
+2. `cd` into the project directory.
+3. **Edit `backend/.env`** and set `OLLAMA_HOST=http://172.17.0.1:11434` (the Docker
+   bridge gateway, not `localhost` — the board runs a shared Ollama server outside
+   your container, pre-loaded with `llama3.2:1b`). **Do not** `ollama pull`, install,
+   or restart Ollama on the board — it's already running and shared across sessions.
+4. **`chmod +x deploy_jetson.sh demo_day_run.sh`, then run them in order:**
+   ```bash
+   ./deploy_jetson.sh     # preflight checks, disk hygiene, hardened venv, rebuilds
+                           # the FAISS index natively, starts the backend on :8000
+   ./demo_day_run.sh      # clean restart via PID file + fires real test queries
+                           # against /query and /citations to prove it actually works
+   ```
+5. **Expose the board off-board.** `0.0.0.0:8000` is only reachable *inside* the
+   container's network — same reason `scp` never worked in step 1. Use a tunnel:
+   ```bash
+   npm install -g localtunnel
+   lt --port 8000
+   ```
+   This prints a public URL forwarding to the board's `:8000` — that's it. One
+   tunnel covers both the API and the UI, since the backend serves the pre-built
+   `frontend/dist/` from the same port (§ "Project structure" above) — no second
+   tunnel, no Node.js build needed on the board.
 
 ### Verify GPU is being used
 
-In a separate SSH session while the backend is running:
+From the Web Terminal while the backend is running, check the board's own Ollama
+logs or:
 
 ```bash
-tegrastats
+nvidia-smi 2>/dev/null || echo "unavailable in this shell (normal inside a container)"
 ```
 
-Look for GPU utilization going up when a query is processed. If it stays at 0%, Ollama isn't using the GPU — check JetPack version (`jetpack --version`) and ensure CUDA libraries are linked correctly.
-
-### Access the frontend
-
-The backend serves the built frontend from `public/dist/`, so the UI is available at the same address as the API:
-
-Access the UI from any browser on the same network at `http://<jetson-ip>:8000`.
+GPU introspection tools are sometimes not visible from inside the session's
+container even though the underlying hardware is real — `deploy_jetson.sh`'s
+Ollama health check already confirms GPU inference indirectly (a fast, non-empty
+reply from the model).
 
 ---
 
@@ -273,7 +274,7 @@ Access the UI from any browser on the same network at `http://<jetson-ip>:8000`.
 
 ### `POST /ingest`
 
-Upload a PDF and build the hybrid index.
+Upload a PDF and index it as a new, independent book.
 
 **Request:** `multipart/form-data` with `file` field (PDF only)
 
@@ -282,28 +283,59 @@ Upload a PDF and build the hybrid index.
 {
   "message": "Ingestion complete",
   "chunks_indexed": 153,
-  "filename": "handbook.pdf"
+  "filename": "handbook.pdf",
+  "book_id": "handbook"
 }
 ```
+
+The most recently ingested `book_id` becomes the default for `/query` and
+`/citations` calls that omit `book_id`.
+
+---
+
+### `GET /books`
+
+List every indexed book.
+
+**Response:**
+```json
+[
+  { "book_id": "handbook", "filename": "handbook.pdf", "chunks_count": 153, "ingested_at": "2026-08-05T12:00:00" }
+]
+```
+
+---
+
+### `PATCH /books/{book_id}`
+
+Rename a book. **Request:** `{ "filename": "New Name.pdf" }`. **Response:** the updated `Book` object.
+
+### `DELETE /books/{book_id}`
+
+Delete a book and its on-disk index. **Response:** `{ "deleted": "<book_id>" }`.
 
 ---
 
 ### `POST /query`
 
-Stream an answer for a question. Returns a plain text stream.
+Stream an answer for a question, scoped to one book. Returns a plain text stream.
 
 **Request:**
 ```json
-{ "question": "what is the hostel checkout time?" }
+{ "question": "what is the hostel checkout time?", "book_id": "handbook" }
 ```
+
+`book_id` is optional — omitted, it falls back to the most recently ingested book.
+If no book has been ingested and none is specified, this returns a 400.
 
 **Response:** `text/plain` stream — tokens arrive one by one.
 
 ---
 
-### `GET /citations?question=...`
+### `GET /citations?question=...&book_id=...`
 
-Get citations and confidence score for a question (non-streaming).
+Get citations and confidence score for a question against one book (non-streaming).
+`book_id` is optional with the same fallback behavior as `/query`.
 
 **Response:**
 ```json
@@ -320,18 +352,23 @@ Get citations and confidence score for a question (non-streaming).
 }
 ```
 
+`confidence` is the cross-encoder reranker's top score, sigmoid-normalized to a
+0–1 range (see "How the confidence score works" below) — it lines up directly
+with `CONFIDENCE_THRESHOLD`.
+
 ---
 
 ### `GET /health`
 
-Check backend status and index state.
+Check backend status and index state across all loaded books.
 
 **Response:**
 ```json
 {
   "status": "ok",
   "index_loaded": true,
-  "chunks_count": 153
+  "chunk_count": 153,
+  "books_loaded": 1
 }
 ```
 
@@ -350,7 +387,12 @@ All tunable parameters live in `backend/.env`:
 | `UPLOAD_DIR` | `../data/uploads` | Where uploaded PDFs are saved |
 | `TOP_K` | `10` | Number of candidates retrieved before reranking |
 | `RERANK_TOP_N` | `3` | Number of chunks passed to the LLM after reranking |
-| `CONFIDENCE_THRESHOLD` | `0.35` | Minimum reranker score to trigger LLM — below this returns "not found" |
+| `CONFIDENCE_THRESHOLD` | `0.35` | Minimum reranker score (0-1, sigmoid-normalized) to trigger LLM — below this returns "not found" |
+
+> The Jetson `.env` currently ships with `CONFIDENCE_THRESHOLD=0.0`, left low
+> intentionally for maximum recall during testing — it means almost every query
+> reaches the LLM regardless of relevance. Raise it to `0.35` before a real demo
+> where hallucination-prevention matters more than recall. See `study.md` §9.
 
 ---
 
@@ -358,7 +400,7 @@ All tunable parameters live in `backend/.env`:
 
 **`ECONNREFUSED 127.0.0.1:8000`** — backend isn't running. Start it with `uvicorn main:app --port 8000` in a separate terminal with the venv activated.
 
-**`No documents indexed yet`** — upload a PDF first via the UI, then query. If you already uploaded and restarted uvicorn, the in-memory index was wiped — re-upload.
+**`No such book indexed`** (400 from `/query` or `/citations`) — no book has been uploaded yet, or the `book_id` you passed doesn't exist. Upload a PDF via `/ingest` first, or check `GET /books` for valid IDs.
 
 **`faiss-cpu` install fails** — you're on Python 3.13. Recreate the venv with Python 3.12: `uv venv .venv --python 3.12`.
 
@@ -366,9 +408,16 @@ All tunable parameters live in `backend/.env`:
 
 **Answer appears all at once instead of streaming** — check that `streamQuery` in `api.js` uses a `ReadableStream` reader, not `await response.json()`.
 
-**Low confidence on valid questions** — your chunks may be too large or the document has complex formatting. Try reducing `CHUNK_SIZE` to 150 in `ingest.py`, delete `data/index/`, and re-ingest.
+**Low confidence on valid questions** — your chunks may be too large or the document has complex formatting. Try reducing `CHUNK_SIZE` to 150 in `ingest.py`, delete the book's `data/index/<book_id>/` directory, and re-ingest.
 
-**GPU not used on Jetson** — verify with `tegrastats`. Ensure JetPack 6 is installed and Ollama was installed after JetPack (so it links against the correct CUDA libraries).
+**Frontend loads but can't reach the API / CORS errors** — normally the frontend is same-origin with the API (either served by the backend from `frontend/dist/`, or via the Vite dev proxy). This only happens if you're opening `frontend/dist/index.html` directly (e.g. via `file://` or a separate static host) without also running the backend on the expected origin — go through `uvicorn` (production) or `npm run dev` (development) instead.
+
+**Deploying to the actual Jetson board** — this repo's own deploy history hit (and
+fixed) a long list of Jetson-specific failures: `.local`-vs-`.venv` package
+shadowing, a `pytz`/`tzdata.zi` crash from `--system-site-packages`, Ollama
+cold-start timeouts, `ensurepip` failures, disk filling to 100%, and more. Don't
+re-debug these from scratch — **[`study.md`](study.md)** documents each one, why it
+happened, and the fix that's already baked into `deploy_jetson.sh`.
 
 ---
 
@@ -377,8 +426,8 @@ All tunable parameters live in `backend/.env`:
 Every query goes through three stages before reaching the LLM:
 
 1. **Hybrid retrieval** — FAISS semantic search + BM25 keyword search, fused via Reciprocal Rank Fusion to get top-10 candidates
-2. **Cross-encoder reranking** — a second model scores each (query, chunk) pair together rather than independently, giving a much more accurate relevance score; top-3 kept
-3. **Confidence gate** — if the best reranker score is below `CONFIDENCE_THRESHOLD` (0.35), the system responds "not found" without calling the LLM
+2. **Cross-encoder reranking** — a second model scores each (query, chunk) pair together rather than independently, giving a much more accurate relevance score; top-3 kept. The cross-encoder's raw output is an unbounded logit, not a 0-1 score, so `retriever.py` applies a sigmoid before this score is used anywhere
+3. **Confidence gate** — if the best (sigmoid-normalized) reranker score is below `CONFIDENCE_THRESHOLD`, the system responds "not found" without calling the LLM
 
 This prevents the 1B model from hallucinating answers to questions the document doesn't cover — one of the most common failure modes in small model RAG systems.
 

@@ -3,6 +3,7 @@ import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 from models import QueryRequest, IngestResponse, Citation, Book, RenameBookRequest
@@ -160,3 +161,11 @@ async def health():
         "chunk_count": sum(len(chunks) for _, _, chunks in BOOKS.values()),
         "books_loaded": len(BOOKS),
     }
+
+
+# Serve the pre-built React frontend from frontend/dist/, committed to git so the
+# board never needs Node.js (see study.md errors.md #3 - Node 18 on the Jetson image
+# can't build Vite 8). Registered last so it never shadows the API routes above.
+FRONTEND_DIST_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+if os.path.isdir(FRONTEND_DIST_DIR):
+    app.mount("/", StaticFiles(directory=FRONTEND_DIST_DIR, html=True), name="static")

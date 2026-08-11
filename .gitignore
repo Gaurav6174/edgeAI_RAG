@@ -17,13 +17,14 @@ htmlcov/
 
 # Node / Vite
 node_modules/
-dist/
 build/
 coverage/
 frontend/node_modules/
-frontend/dist/
 frontend/build/
 frontend/.vite/
+# frontend/dist/ is intentionally tracked - the board has no reliable Node.js/Vite
+# build environment, so the backend serves this pre-built, committed bundle
+# directly (see backend/main.py, study.md). Rebuild + commit after frontend changes.
 
 # Logs
 *.log
