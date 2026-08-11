@@ -6,8 +6,8 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
-from models import QueryRequest, IngestResponse, Citation, Book
-from ingest import ingest_pdf, load_index, list_books
+from models import QueryRequest, IngestResponse, Citation, Book, RenameBookRequest
+from ingest import ingest_pdf, load_index, list_books, delete_book, rename_book
 from retriever import retrieve
 from confidence import is_confident
 from llm import query_ollama_stream
@@ -73,6 +73,25 @@ async def ingest(file: UploadFile = File(...)):
         filename=file.filename,
         book_id=book_id,
     )
+
+
+@app.delete("/books/{book_id}")
+async def remove_book(book_id: str):
+    global LAST_INGESTED_BOOK_ID
+    if not delete_book(book_id):
+        raise HTTPException(404, "Book not found")
+    BOOKS.pop(book_id, None)
+    if LAST_INGESTED_BOOK_ID == book_id:
+        LAST_INGESTED_BOOK_ID = next(reversed(BOOKS), None)
+    return {"deleted": book_id}
+
+
+@app.patch("/books/{book_id}", response_model=Book)
+async def update_book(book_id: str, request: RenameBookRequest):
+    meta = rename_book(book_id, request.filename)
+    if meta is None:
+        raise HTTPException(404, "Book not found")
+    return Book(**meta)
 
 
 def _resolve_book(book_id: str | None) -> tuple:

@@ -1,16 +1,20 @@
 const state = {
   books: [],
   activeBookId: null,
+  lastQuestion: '',
 };
 
 const els = {
   healthBadge: document.getElementById('health-badge'),
+  themeToggle: document.getElementById('theme-toggle'),
   dropzone: document.getElementById('dropzone'),
   dropzoneText: document.getElementById('dropzone-text'),
   fileInput: document.getElementById('file-input'),
   uploadBtn: document.getElementById('upload-btn'),
   uploadStatus: document.getElementById('upload-status'),
   bookList: document.getElementById('book-list'),
+  statsCard: document.getElementById('stats-card'),
+  statsBody: document.getElementById('stats-body'),
   messages: document.getElementById('messages'),
   emptyState: document.getElementById('empty-state'),
   composer: document.getElementById('composer'),
@@ -19,6 +23,21 @@ const els = {
 };
 
 let pendingFile = null;
+
+// ---------- Theme ----------
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  els.themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem('theme', theme);
+}
+
+els.themeToggle.addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+});
+
+applyTheme(localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
 
 // ---------- Health ----------
 
@@ -32,6 +51,22 @@ async function checkHealth() {
     els.healthBadge.textContent = 'backend unreachable';
     els.healthBadge.className = 'global-nav__badge err';
   }
+}
+
+// ---------- Chat history (per book, localStorage-backed) ----------
+
+function historyKey(bookId) { return `chat_history_${bookId}`; }
+
+function loadHistory(bookId) {
+  try {
+    return JSON.parse(localStorage.getItem(historyKey(bookId)) || '[]');
+  } catch { return []; }
+}
+
+function saveHistoryEntry(bookId, entry) {
+  const history = loadHistory(bookId);
+  history.push(entry);
+  localStorage.setItem(historyKey(bookId), JSON.stringify(history));
 }
 
 // ---------- Books ----------
@@ -56,10 +91,33 @@ function renderBooks() {
   for (const book of state.books) {
     const li = document.createElement('li');
     li.className = 'book-chip' + (book.book_id === state.activeBookId ? ' selected' : '');
-    li.innerHTML = `
-      <span class="book-chip__name">${escapeHtml(book.filename)}</span>
-      <span class="book-chip__count">${book.chunks_count}</span>
-    `;
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'book-chip__name';
+    nameSpan.textContent = book.filename;
+    nameSpan.title = book.filename;
+
+    const countSpan = document.createElement('span');
+    countSpan.className = 'book-chip__count';
+    countSpan.textContent = book.chunks_count;
+
+    const actions = document.createElement('span');
+    actions.className = 'book-chip__actions';
+
+    const renameBtn = document.createElement('button');
+    renameBtn.className = 'book-chip__icon-btn';
+    renameBtn.title = 'Rename';
+    renameBtn.textContent = '✎';
+    renameBtn.addEventListener('click', (e) => { e.stopPropagation(); renameBookPrompt(book); });
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'book-chip__icon-btn';
+    deleteBtn.title = 'Delete';
+    deleteBtn.textContent = '✕';
+    deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteBookConfirm(book); });
+
+    actions.append(renameBtn, deleteBtn);
+    li.append(nameSpan, countSpan, actions);
     li.addEventListener('click', () => selectBook(book.book_id));
     els.bookList.appendChild(li);
   }
@@ -68,11 +126,72 @@ function renderBooks() {
 function selectBook(bookId) {
   state.activeBookId = bookId;
   renderBooks();
+  renderStats();
+  restoreHistory(bookId);
   const enabled = Boolean(bookId);
   els.questionInput.disabled = !enabled;
   els.sendBtn.disabled = !enabled;
   if (enabled) {
     els.questionInput.placeholder = 'Ask a question about this book…';
+  }
+}
+
+function renderStats() {
+  const book = state.books.find(b => b.book_id === state.activeBookId);
+  if (!book) { els.statsCard.hidden = true; return; }
+  els.statsCard.hidden = false;
+  const ingested = book.ingested_at ? new Date(book.ingested_at).toLocaleString() : '—';
+  els.statsBody.innerHTML = `
+    <div><dt>File</dt><dd title="${escapeHtml(book.filename)}">${escapeHtml(book.filename)}</dd></div>
+    <div><dt>Chunks</dt><dd>${book.chunks_count}</dd></div>
+    <div><dt>Ingested</dt><dd>${ingested}</dd></div>
+    <div><dt>Questions asked</dt><dd>${loadHistory(book.book_id).length}</dd></div>
+  `;
+}
+
+function restoreHistory(bookId) {
+  els.messages.innerHTML = '';
+  const history = loadHistory(bookId);
+  if (!history.length) {
+    const div = document.createElement('div');
+    div.className = 'empty-state';
+    div.innerHTML = `<p class="empty-state__title">Select a book, then ask it anything</p>
+      <p class="empty-state__hint">Answers are generated only from the book you pick — nothing else. Press <kbd>/</kbd> to focus the box, <kbd>↑</kbd> to recall your last question.</p>`;
+    els.messages.appendChild(div);
+    return;
+  }
+  for (const entry of history) {
+    appendUserMessage(entry.question);
+    const el = appendAssistantPlaceholder();
+    renderAssistantMessage(el, entry.answer, { confidence: entry.confidence, citations: entry.citations });
+  }
+}
+
+async function renameBookPrompt(book) {
+  const newName = prompt('Rename book', book.filename);
+  if (!newName || newName === book.filename) return;
+  const res = await fetch(`/books/${encodeURIComponent(book.book_id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename: newName }),
+  });
+  if (res.ok) await loadBooks(state.activeBookId);
+}
+
+async function deleteBookConfirm(book) {
+  if (!confirm(`Delete "${book.filename}"? This removes its index permanently.`)) return;
+  const res = await fetch(`/books/${encodeURIComponent(book.book_id)}`, { method: 'DELETE' });
+  if (res.ok) {
+    localStorage.removeItem(historyKey(book.book_id));
+    if (state.activeBookId === book.book_id) state.activeBookId = null;
+    await loadBooks();
+    await checkHealth();
+    if (!state.activeBookId) {
+      els.statsCard.hidden = true;
+      els.questionInput.disabled = true;
+      els.sendBtn.disabled = true;
+      restoreHistory(null);
+    }
   }
 }
 
@@ -145,7 +264,8 @@ els.composer.addEventListener('submit', async (e) => {
   if (!question || !state.activeBookId) return;
 
   els.questionInput.value = '';
-  els.emptyState.remove();
+  state.lastQuestion = question;
+  document.getElementById('empty-state')?.remove();
   appendUserMessage(question);
   const assistantEl = appendAssistantPlaceholder();
   setComposerBusy(true);
@@ -158,6 +278,13 @@ els.composer.addEventListener('submit', async (e) => {
       streamAnswer(question, bookId, assistantEl),
     ]);
     renderAssistantMessage(assistantEl, answerText, citationsData);
+    saveHistoryEntry(bookId, {
+      question,
+      answer: answerText,
+      confidence: citationsData.confidence,
+      citations: citationsData.citations,
+    });
+    renderStats();
   } catch (err) {
     assistantEl.innerHTML = `<span style="color:var(--color-low)">Error: ${escapeHtml(err.message)}</span>`;
   } finally {
@@ -224,7 +351,7 @@ function renderAssistantMessage(el, answerText, citationsData) {
   const pct = Math.round((confidence || 0) * 100);
   const tier = confidence >= 0.7 ? 'high' : confidence >= 0.4 ? 'mid' : 'low';
 
-  let html = `<span class="confidence-badge ${tier}">${pct}% confidence</span><div>${escapeHtml(answerText)}</div>`;
+  let html = `<span class="confidence-badge ${tier}">${pct}% confidence</span><div>${renderMarkdown(answerText)}</div>`;
 
   if (citations && citations.length) {
     html += `<details class="citations"><summary>${citations.length} source(s)</summary>`;
@@ -238,6 +365,33 @@ function renderAssistantMessage(el, answerText, citationsData) {
   scrollToBottom();
 }
 
+// Minimal, dependency-free markdown: **bold**, *italic*, `code`, "- " lists, line breaks.
+function renderMarkdown(text) {
+  const escaped = escapeHtml(text);
+  const lines = escaped.split('\n');
+  let html = '';
+  let inList = false;
+  for (const line of lines) {
+    const bulletMatch = line.match(/^\s*-\s+(.*)/);
+    if (bulletMatch) {
+      if (!inList) { html += '<ul>'; inList = true; }
+      html += `<li>${inlineMarkdown(bulletMatch[1])}</li>`;
+    } else {
+      if (inList) { html += '</ul>'; inList = false; }
+      if (line.trim()) html += `<div>${inlineMarkdown(line)}</div>`;
+    }
+  }
+  if (inList) html += '</ul>';
+  return html || escaped;
+}
+
+function inlineMarkdown(line) {
+  return line
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+}
+
 function scrollToBottom() {
   els.messages.scrollTop = els.messages.scrollHeight;
 }
@@ -247,6 +401,24 @@ function escapeHtml(str) {
   div.textContent = str;
   return div.innerHTML;
 }
+
+// ---------- Keyboard shortcuts ----------
+
+document.addEventListener('keydown', (e) => {
+  const tag = document.activeElement.tagName;
+  const isTyping = tag === 'INPUT' || tag === 'TEXTAREA';
+
+  if (e.key === '/' && !isTyping) {
+    e.preventDefault();
+    els.questionInput.focus();
+  } else if (e.key === 'ArrowUp' && document.activeElement === els.questionInput && !els.questionInput.value) {
+    e.preventDefault();
+    els.questionInput.value = state.lastQuestion;
+  } else if (e.key === 'Escape' && document.activeElement === els.questionInput) {
+    els.questionInput.value = '';
+    els.questionInput.blur();
+  }
+});
 
 // ---------- Init ----------
 

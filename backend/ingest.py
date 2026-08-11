@@ -2,6 +2,8 @@ import json
 import os
 import pickle
 import re
+import shutil
+from datetime import datetime, timezone
 import fitz
 import faiss
 import numpy as np
@@ -25,17 +27,40 @@ def slugify(filename: str) -> str:
     slug = re.sub(r'[^a-z0-9]+', '-', base).strip('-')
     return slug or "book"
 
+def _meta_path(book_id: str) -> str:
+    return os.path.join(INDEX_DIR, book_id, "meta.json")
+
 def list_books() -> list[dict]:
     """Scan INDEX_DIR for per-book subfolders and return their metadata."""
     if not os.path.isdir(INDEX_DIR):
         return []
     books = []
     for entry in sorted(os.listdir(INDEX_DIR)):
-        meta_path = os.path.join(INDEX_DIR, entry, "meta.json")
+        meta_path = _meta_path(entry)
         if os.path.isfile(meta_path):
             with open(meta_path, encoding="utf-8") as f:
-                books.append(json.load(f))
+                meta = json.load(f)
+            meta.setdefault("ingested_at", None)
+            books.append(meta)
     return books
+
+def delete_book(book_id: str) -> bool:
+    book_dir = os.path.join(INDEX_DIR, book_id)
+    if not os.path.isdir(book_dir):
+        return False
+    shutil.rmtree(book_dir)
+    return True
+
+def rename_book(book_id: str, new_filename: str) -> dict | None:
+    meta_path = _meta_path(book_id)
+    if not os.path.isfile(meta_path):
+        return None
+    with open(meta_path, encoding="utf-8") as f:
+        meta = json.load(f)
+    meta["filename"] = new_filename
+    with open(meta_path, "w", encoding="utf-8") as f:
+        json.dump(meta, f)
+    return meta
 
 def extract_text_from_pdf(pdf_path: str) -> list[dict]:
     doc = fitz.open(pdf_path)
@@ -112,7 +137,12 @@ def save_index(faiss_index, bm25_index, chunks: list[dict], filename: str, embed
     np.save(os.path.join(book_dir, "embeddings.npy"), embeddings)
 
     with open(os.path.join(book_dir, "meta.json"), "w", encoding="utf-8") as f:
-        json.dump({"book_id": book_id, "filename": filename, "chunks_count": len(chunks)}, f)
+        json.dump({
+            "book_id": book_id,
+            "filename": filename,
+            "chunks_count": len(chunks),
+            "ingested_at": datetime.now(timezone.utc).isoformat(),
+        }, f)
 
     print(f"Index saved for {filename} (book_id={book_id}) with {len(chunks)} chunks.")
 

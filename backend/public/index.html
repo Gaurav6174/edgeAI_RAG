@@ -10,7 +10,10 @@
 
   <header class="global-nav">
     <span class="global-nav__title">Campus Handbook Bot</span>
-    <span class="global-nav__badge" id="health-badge">connecting…</span>
+    <div class="global-nav__right">
+      <span class="global-nav__badge" id="health-badge">connecting…</span>
+      <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+    </div>
   </header>
 
   <main class="layout">
@@ -35,13 +38,18 @@
           <li class="book-list__empty">No books yet</li>
         </ul>
       </div>
+
+      <div class="card" id="stats-card" hidden>
+        <h2 class="card__title">Active book</h2>
+        <dl class="stats" id="stats-body"></dl>
+      </div>
     </aside>
 
     <section class="chat-panel">
       <div class="messages" id="messages">
         <div class="empty-state" id="empty-state">
           <p class="empty-state__title">Select a book, then ask it anything</p>
-          <p class="empty-state__hint">Answers are generated only from the book you pick — nothing else.</p>
+          <p class="empty-state__hint">Answers are generated only from the book you pick — nothing else. Press <kbd>/</kbd> to focus the box, <kbd>↑</kbd> to recall your last question.</p>
         </div>
       </div>
 

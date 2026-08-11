@@ -29,3 +29,7 @@ class Book(BaseModel):
     book_id: str
     filename: str
     chunks_count: int
+    ingested_at: Optional[str] = None
+
+class RenameBookRequest(BaseModel):
+    filename: str
