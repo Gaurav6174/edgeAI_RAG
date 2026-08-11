@@ -36,7 +36,7 @@ export default function Upload({ onUploadComplete }) {
     try {
       const data = await ingestPDF(file)
       setChunksIndexed(data.chunks_indexed)
-      onUploadComplete(data.filename)
+      onUploadComplete(data.filename, data.book_id)
       setFile(null)
     } catch (err) {
       setError(err.message)

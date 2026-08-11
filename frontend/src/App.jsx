@@ -1,22 +1,45 @@
 import { useState, useEffect } from 'react'
 import Upload from './components/Upload'
+import BookList from './components/BookList'
 import Chat from './components/Chat'
-import { getHealth } from './api'
+import { getHealth, getBooks } from './api'
 
 export default function App() {
   const [lastUploaded, setLastUploaded] = useState(null)
   const [indexLoaded, setIndexLoaded]   = useState(false)
+  const [books, setBooks]               = useState([])
+  const [activeBookId, setActiveBookId] = useState(null)
 
-  // Check on load if an index already exists from a previous session
+  const refreshBooks = async (selectId) => {
+    try {
+      const data = await getBooks()
+      setBooks(data)
+      if (selectId !== undefined) {
+        setActiveBookId(selectId)
+      } else {
+        setActiveBookId(prev => {
+          if (prev && data.some(b => b.book_id === prev)) return prev
+          return data.length ? data[data.length - 1].book_id : null
+        })
+      }
+    } catch {
+      // backend unreachable — leave books as-is
+    }
+  }
+
+  // Check on load if any books already exist from a previous session
   useEffect(() => {
     getHealth()
       .then(data => setIndexLoaded(data.index_loaded))
       .catch(() => {})
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load, not a render-driven update
+    refreshBooks()
   }, [])
 
-  const handleUploadComplete = (filename) => {
+  const handleUploadComplete = (filename, bookId) => {
     setLastUploaded(filename)
     setIndexLoaded(true)
+    refreshBooks(bookId)
   }
 
   return (
@@ -97,7 +120,7 @@ export default function App() {
         alignItems: 'start',
       }}>
 
-        {/* Left — upload + status */}
+        {/* Left — upload + books */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <Upload onUploadComplete={handleUploadComplete} />
 
@@ -128,10 +151,17 @@ export default function App() {
               {lastUploaded}
             </div>
           )}
+
+          <BookList
+            books={books}
+            activeBookId={activeBookId}
+            onSelect={setActiveBookId}
+            onChanged={refreshBooks}
+          />
         </div>
 
         {/* Right — chat */}
-        <Chat />
+        <Chat bookId={activeBookId} />
       </section>
 
       {/* Footer */}

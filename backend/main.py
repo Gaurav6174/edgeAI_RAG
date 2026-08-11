@@ -3,7 +3,6 @@ import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 from models import QueryRequest, IngestResponse, Citation, Book, RenameBookRequest
@@ -161,10 +160,3 @@ async def health():
         "chunk_count": sum(len(chunks) for _, _, chunks in BOOKS.values()),
         "books_loaded": len(BOOKS),
     }
-
-
-# Serve the static frontend (plain HTML/CSS/JS, no build step) from backend/public.
-# Registered last so it never shadows the API routes above.
-PUBLIC_DIR = os.path.join(os.path.dirname(__file__), "public")
-if os.path.isdir(PUBLIC_DIR):
-    app.mount("/", StaticFiles(directory=PUBLIC_DIR, html=True), name="static")

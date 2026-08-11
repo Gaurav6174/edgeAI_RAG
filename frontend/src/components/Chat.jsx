@@ -3,7 +3,7 @@ import { getCitations, streamQuery } from '../api'
 import Citation from './Citation'
 import Confidence from './Confidence'
 
-export default function Chat() {
+export default function Chat({ bookId }) {
   const [messages, setMessages]   = useState([])
   const [input, setInput]         = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -13,9 +13,14 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Switching books starts a fresh conversation — answers are scoped to one book.
+  useEffect(() => {
+    setMessages([])
+  }, [bookId])
+
   const handleSubmit = async (e) => {
   e.preventDefault()
-  if (!input.trim() || isLoading) return
+  if (!input.trim() || isLoading || !bookId) return
 
   const question = input
   setMessages(prev => [...prev, { role: 'user', content: question }])
@@ -34,9 +39,9 @@ export default function Chat() {
   try {
     // Run citations fetch and stream START in parallel
     const [citationData] = await Promise.all([
-      getCitations(question),
+      getCitations(question, bookId),
       // stream starts immediately, doesn't wait for citations
-      streamQuery(question, (token) => {
+      streamQuery(question, bookId, (token) => {
         setMessages(prev => {
           const updated = [...prev]
           const last = updated[updated.length - 1]
@@ -106,7 +111,7 @@ export default function Chat() {
               color: '#000000',
               textAlign: 'center',
             }}>
-              Ask anything about the handbook.
+              {bookId ? 'Ask anything about this book.' : 'Select a book to start asking questions.'}
             </p>
           </div>
         )}
@@ -179,8 +184,8 @@ export default function Chat() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your question..."
-          disabled={isLoading}
+          placeholder={bookId ? 'Type your question...' : 'Select a book first...'}
+          disabled={isLoading || !bookId}
           style={{
             flex: 1,
             height: '44px',
@@ -195,17 +200,17 @@ export default function Chat() {
         />
         <button
           type="submit"
-          disabled={isLoading || !input.trim()}
+          disabled={isLoading || !input.trim() || !bookId}
           style={{
             height: '44px',
             padding: '0 20px',
             borderRadius: '999px',
             border: 'none',
-            backgroundColor: isLoading || !input.trim() ? '#f0f0f0' : '#000000',
-            color: isLoading || !input.trim() ? '#999999' : '#ffffff',
+            backgroundColor: isLoading || !input.trim() || !bookId ? '#f0f0f0' : '#000000',
+            color: isLoading || !input.trim() || !bookId ? '#999999' : '#ffffff',
             fontSize: '14px',
             fontWeight: 500,
-            cursor: isLoading || !input.trim() ? 'not-allowed' : 'pointer',
+            cursor: isLoading || !input.trim() || !bookId ? 'not-allowed' : 'pointer',
             transition: 'background-color 0.15s',
             whiteSpace: 'nowrap',
           }}
